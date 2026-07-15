@@ -1,0 +1,98 @@
+import streamlit as st
+
+st.set_page_config(
+    page_title="🍽️ 날씨별 음식 추천",
+    page_icon="🌤️",
+    layout="wide"
+)
+
+st.title("🌤️ 오늘 날씨에 따른 음식 추천")
+st.write("오늘 날씨를 선택하면 어울리는 음식을 추천해드립니다.")
+
+foods = {
+    "☀️ 맑음": {
+        "name": "비빔밥",
+        "image": "https://upload.wikimedia.org/wikipedia/commons/4/44/Dolsot-bibimbap.jpg",
+        "calorie": 560,
+        "carb": "75 g",
+        "protein": "20 g",
+        "fat": "15 g",
+        "reason": "신선한 채소와 함께 먹기 좋은 비빔밥!"
+    },
+
+    "🌧️ 비": {
+        "name": "김치찌개",
+        "image": "https://upload.wikimedia.org/wikipedia/commons/8/86/Kimchi_jjigae.jpg",
+        "calorie": 480,
+        "carb": "30 g",
+        "protein": "28 g",
+        "fat": "20 g",
+        "reason": "비 오는 날에는 얼큰한 김치찌개!"
+    },
+
+    "❄️ 눈": {
+        "name": "라면",
+        "image": "https://upload.wikimedia.org/wikipedia/commons/2/20/Instant_noodle.jpg",
+        "calorie": 520,
+        "carb": "70 g",
+        "protein": "12 g",
+        "fat": "18 g",
+        "reason": "눈 오는 날엔 따뜻한 라면 한 그릇!"
+    },
+
+    "🥵 더움": {
+        "name": "냉면",
+        "image": "https://upload.wikimedia.org/wikipedia/commons/3/31/Naengmyeon.jpg",
+        "calorie": 430,
+        "carb": "72 g",
+        "protein": "13 g",
+        "fat": "4 g",
+        "reason": "더운 날엔 시원한 냉면!"
+    },
+
+    "🥶 추움": {
+        "name": "삼계탕",
+        "image": "https://upload.wikimedia.org/wikipedia/commons/5/55/Samgyetang.jpg",
+        "calorie": 918,
+        "carb": "40 g",
+        "protein": "55 g",
+        "fat": "35 g",
+        "reason": "몸을 따뜻하게 해주는 삼계탕!"
+    },
+
+    "☁️ 흐림": {
+        "name": "크림파스타",
+        "image": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Fettuccine_Alfredo.jpg",
+        "calorie": 650,
+        "carb": "80 g",
+        "protein": "18 g",
+        "fat": "22 g",
+        "reason": "기분 전환에는 크림파스타!"
+    }
+}
+
+weather = st.selectbox(
+    "오늘 날씨를 선택하세요.",
+    list(foods.keys())
+)
+
+if st.button("🍴 음식 추천"):
+
+    food = foods[weather]
+
+    st.header(food["name"])
+
+    st.image(food["image"], use_container_width=True)
+
+    st.success(food["reason"])
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("🔥 칼로리", f'{food["calorie"]} kcal')
+    col2.metric("🍚 탄수화물", food["carb"])
+    col3.metric("🥩 단백질", food["protein"])
+    col4.metric("🥑 지방", food["fat"])
+
+    st.progress(food["protein"].startswith("5") and 0.9 or 0.7)
+
+    st.info("맛있게 드세요! 😋")
