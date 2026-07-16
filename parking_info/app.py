@@ -2,10 +2,6 @@ import streamlit as st
 import pandas as pd
 import pydeck as pdk
 
-df = pd.read_csv(uploaded_file, encoding="cp949")
-
-st.write(df.columns.tolist())
-
 st.set_page_config(
     page_title="서울 주차장 정보",
     page_icon="🅿️",
@@ -189,3 +185,6 @@ if uploaded_file is not None:
 else:
 
     st.info("CSV 파일을 업로드하세요.")
+df = pd.read_csv(uploaded_file, encoding="cp949")
+
+st.write(df.columns.tolist())
