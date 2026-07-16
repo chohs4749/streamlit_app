@@ -184,7 +184,16 @@ if uploaded_file is not None:
 
 else:
 
-    st.info("CSV 파일을 업로드하세요.")
-df = pd.read_csv(uploaded_file, encoding="cp949")
+    uploaded_file = st.file_uploader("CSV 업로드", type=["csv"])
 
+if uploaded_file is None:
+    st.stop()
+
+try:
+    df = load_csv(uploaded_file)
+except Exception as e:
+    st.exception(e)
+    st.stop()
+
+st.write(df.head())
 st.write(df.columns.tolist())
