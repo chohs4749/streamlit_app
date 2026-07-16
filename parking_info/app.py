@@ -19,6 +19,24 @@ if uploaded_file:
 
     df["자치구"] = df["주소"].astype(str).str.extract(r"서울특별시\s+(\S+구)")
 
+# 자치구 추출
+if "소재지도로명주소" in df.columns:
+    addr_col = "소재지도로명주소"
+elif "주소" in df.columns:
+    addr_col = "주소"
+else:
+    addr_col = None
+
+if addr_col:
+    df["자치구"] = (
+        df[addr_col]
+        .fillna("")
+        .astype(str)
+        .str.extract(r"(강남구|강동구|강북구|강서구|관악구|광진구|구로구|금천구|노원구|도봉구|동대문구|동작구|마포구|서대문구|서초구|성동구|성북구|송파구|양천구|영등포구|용산구|은평구|종로구|중구|중랑구)")
+    )
+else:
+    df["자치구"] = ""
+    
     gu = st.selectbox("자치구", ["전체"]+sorted(df["자치구"].dropna().unique().tolist()))
     kind = st.selectbox("주차장 종류", ["전체"]+sorted(df["주차장 종류명"].dropna().unique().tolist()))
     free = st.selectbox("유무료", ["전체"]+sorted(df["유무료구분명"].dropna().unique().tolist()))
