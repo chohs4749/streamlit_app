@@ -2,7 +2,7 @@ import streamlit as st
 
 st.set_page_config(page_title="🐧 Penguin Finder", page_icon="🐧", layout="centered")
 
-# Unsplash 및 외부 원본 고화질 직링크 (전 세계 18종 펭귄 모두 포함)
+# 전 세계 18종 펭귄 정보 및 검증된 펭귄 고유 이미지 URL (위키미디어 공헌 출처)
 PENGUINS = {
     "황제펭귄": {
         "영명": "Emperor Penguin",
@@ -11,7 +11,7 @@ PENGUINS = {
         "몸무게": "22~45 kg",
         "먹이": "크릴, 물고기, 오징어",
         "특징": "현존하는 펭귄 중 가장 큼. 혹독한 추위 속에서 수컷이 알을 낳아 품음",
-        "이미지": "https://images.unsplash.com/photo-1598439210625-5067c578f3f6?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/0/07/Emperor_Penguin_Manchot_empereur.jpg"
     },
     "임금펭귄": {
         "영명": "King Penguin",
@@ -20,7 +20,7 @@ PENGUINS = {
         "몸무게": "11~16 kg",
         "먹이": "작은 물고기, 오징어",
         "특징": "황제펭귄 다음으로 큼. 목과 부리 주위의 선명한 주황색 깃털이 특징",
-        "이미지": "https://images.unsplash.com/photo-1551986782-d0169b3f8fa7?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/2/22/King_penguin_st_andrews_bay_sea_lion_2.jpg"
     },
     "아델리펭귄": {
         "영명": "Adélie Penguin",
@@ -29,7 +29,7 @@ PENGUINS = {
         "몸무게": "3.5~6 kg",
         "먹이": "크릴, 작은 물고기",
         "특징": "눈 둘레의 하얀 테두리가 매력적이며 호기심이 많고 호전적임",
-        "이미지": "https://images.unsplash.com/photo-1527004013197-933c4bb611b3?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/e/e3/Adelie_Penguin_in_Antarctica.jpg"
     },
     "젠투펭귄": {
         "영명": "Gentoo Penguin",
@@ -38,7 +38,7 @@ PENGUINS = {
         "몸무게": "5~8.5 kg",
         "먹이": "크릴, 물고기",
         "특징": "머리 위의 흰 양말 모양 띠와 주황색 부리가 특징이며 수영 속도가 가장 빠름",
-        "이미지": "https://images.unsplash.com/photo-1541414779316-956a5f3d6416?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/0/00/Brown_Bluff-2013-Gentoo_penguin_%28Pygoscelis_papua%29.jpg"
     },
     "턱끈펭귄": {
         "영명": "Chinstrap Penguin",
@@ -47,7 +47,7 @@ PENGUINS = {
         "몸무게": "3~5 kg",
         "먹이": "크릴, 작은 물고기",
         "특징": "턱 아래를 가로지르는 가느다란 검은 줄무늬(턱끈)가 헬멧을 쓴 듯함",
-        "이미지": "https://images.unsplash.com/photo-1574063413132-355dbfd83e0c?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/0/08/South_Shetland-2016-Deception_Island%E2%80%93Chinstrap_penguin_%28Pygoscelis_antarcticus%29_04.jpg"
     },
     "리틀블루펭귄": {
         "영명": "Little Blue Penguin",
@@ -56,7 +56,7 @@ PENGUINS = {
         "몸무게": "1~1.5 kg",
         "먹이": "작은 물고기, 오징어",
         "특징": "세계에서 가장 작은 펭귄으로, 깃털이 푸른빛을 띰 ('요정펭귄'으로도 불림)",
-        "이미지": "https://images.unsplash.com/photo-1563281577-a7be47e20db9?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Little_penguin_wildlife_park.jpg"
     },
     "마카로니펭귄": {
         "영명": "Macaroni Penguin",
@@ -65,7 +65,7 @@ PENGUINS = {
         "몸무게": "5.5 kg",
         "먹이": "크릴, 오징어",
         "특징": "머리에 화려하고 깃털 모양의 주황 노란색 벼슬이 솟아있음",
-        "이미지": "https://images.unsplash.com/photo-1598439210625-5067c578f3f6?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/8/87/Eudyptes_chrysolophus_1.jpg"
     },
     "남방바위뛰기펭귄": {
         "영명": "Southern Rockhopper Penguin",
@@ -74,7 +74,7 @@ PENGUINS = {
         "몸무게": "2~3.4 kg",
         "먹이": "크릴, 오징어",
         "특징": "붉은 눈과 노란 깃털 벼슬을 가졌으며 바위 절벽을 깡충깡충 잘 뛰어다님",
-        "이미지": "https://images.unsplash.com/photo-1551986782-d0169b3f8fa7?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Southern_Rockhopper_Penguin.jpg"
     },
     "북방바위뛰기펭귄": {
         "영명": "Northern Rockhopper Penguin",
@@ -83,7 +83,7 @@ PENGUINS = {
         "몸무게": "3 kg",
         "먹이": "갑각류, 오징어",
         "특징": "남방바위뛰기펭귄보다 벼슬이 길고 풍성하며 멸종위기종에 해당함",
-        "이미지": "https://images.unsplash.com/photo-1574063413132-355dbfd83e0c?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/8/8c/Northern_Rockhopper_Penguin.jpg"
     },
     "갈라파고스펭귄": {
         "영명": "Galapagos Penguin",
@@ -92,7 +92,7 @@ PENGUINS = {
         "몸무게": "2.5 kg",
         "먹이": "작은 물고기(숭어, 정어리)",
         "특징": "적도 부근의 따뜻한 지역에 사는 유일한 펭귄",
-        "이미지": "https://images.unsplash.com/photo-1508672019048-805479760c23?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Galapagos_Penguin_Bartolome.jpg"
     },
     "아프리카펭귄": {
         "영명": "African Penguin (Jackass Penguin)",
@@ -101,7 +101,7 @@ PENGUINS = {
         "몸무게": "2.2~3.5 kg",
         "먹이": "정어리, 멸치",
         "특징": "가슴에 C자형 검은 띠가 있고 당나귀 울음소리와 비슷한 소리를 냄",
-        "이미지": "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/6/63/African_penguin_side_view.jpg"
     },
     "마젤란펭귄": {
         "영명": "Magellanic Penguin",
@@ -110,7 +110,7 @@ PENGUINS = {
         "몸무게": "2.7~6.5 kg",
         "먹이": "오징어, 정어리",
         "특징": "목에 두 개의 검은 테두리가 있으며 굴을 파서 번식함",
-        "이미지": "https://images.unsplash.com/photo-1534567153574-2b12153a87f0?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Magellanic_penguin%2C_Otway_Sound%2C_Chile.jpg"
     },
     "훔볼트펭귄": {
         "영명": "Humboldt Penguin",
@@ -119,7 +119,7 @@ PENGUINS = {
         "몸무게": "3.6~5.9 kg",
         "먹이": "멸치, 전갱이",
         "특징": "부리 주변에 핑크색 육질이 노출되어 체온 조절을 도움",
-        "이미지": "https://images.unsplash.com/photo-1589656966895-2f33e7653819?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/4/41/Humboldt-pinguin.jpg"
     },
     "노란눈펭귄": {
         "영명": "Yellow-eyed Penguin",
@@ -128,7 +128,7 @@ PENGUINS = {
         "몸무게": "3~8 kg",
         "먹이": "물고기, 오징어",
         "특징": "선명한 노란 눈과 머리 주변의 노란 띠가 특징인 세계적 희귀 펭귄",
-        "이미지": "https://images.unsplash.com/photo-1541414779316-956a5f3d6416?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/a/a2/Yellow-eyed_penguin_Katiki_Point.jpg"
     },
     "스네어스펭귄": {
         "영명": "Snares Penguin",
@@ -137,7 +137,7 @@ PENGUINS = {
         "몸무게": "2.5~4 kg",
         "먹이": "크릴, 오징어",
         "특징": "부리 자루 주위의 하얀 피부선과 굵은 벼슬 깃털이 특징",
-        "이미지": "https://images.unsplash.com/photo-1574063413132-355dbfd83e0c?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/c/c5/Snares_Penguin.jpg"
     },
     "피오르드랜드펭귄": {
         "영명": "Fiordland Penguin",
@@ -146,7 +146,7 @@ PENGUINS = {
         "몸무게": "3~4.5 kg",
         "먹이": "갑각류, 작은 물고기",
         "특징": "볼 부분에 3~5개의 하얀 줄무늬가 있는 수줍음 많은 펭귄",
-        "이미지": "https://images.unsplash.com/photo-1563281577-a7be47e20db9?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/d/d3/Fiordland_Penguin.jpg"
     },
     "로열펭귄": {
         "영명": "Royal Penguin",
@@ -155,7 +155,7 @@ PENGUINS = {
         "몸무게": "3~8 kg",
         "먹이": "크릴, 작은 물고기",
         "특징": "마카로니펭귄과 매우 비슷하나 얼굴과 턱이 흰색을 띰",
-        "이미지": "https://images.unsplash.com/photo-1551986782-d0169b3f8fa7?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/f/f0/Royal_Penguin_Macquarie_Island.jpg"
     },
     "화이트플리퍼펭귄": {
         "영명": "White-flippered Penguin",
@@ -164,11 +164,11 @@ PENGUINS = {
         "몸무게": "1.5 kg",
         "먹이": "작은 물고기",
         "특징": "리틀블루펭귄의 아종 또는 근연종으로 날개 가장자리에 하얀 띠가 있음",
-        "이미지": "https://images.unsplash.com/photo-1563281577-a7be47e20db9?w=800&auto=format&fit=crop"
+        "이미지": "https://upload.wikimedia.org/wikipedia/commons/8/88/White-flippered_Penguin.jpg"
     }
 }
 
-# CSS 스타일 적용
+# 커스텀 CSS 스타일링
 st.markdown("""
 <style>
 .stApp {
@@ -176,35 +176,33 @@ st.markdown("""
 }
 .penguin-card {
     background-color: white;
-    padding: 24px;
-    border-radius: 16px;
-    box-shadow: 0 10px 25px rgba(0, 119, 182, 0.1);
-    border: 2px solid #bae6fd;
-    margin-bottom: 20px;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 119, 182, 0.1);
+    border: 1px solid #bae6fd;
+    margin-bottom: 15px;
 }
 .penguin-title {
     color: #0369a1;
     font-size: 1.8rem;
     font-weight: bold;
-    margin-bottom: 5px;
 }
 .penguin-sub {
     color: #0284c7;
     font-size: 1.0rem;
     font-style: italic;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🐧 Penguin Finder (펭귄 백과사전)")
-st.write(f"전 세계에 존재하거나 알려진 **{len(PENGUINS)}종의 펭귄** 정보를 검색해보세요!")
+st.title("🐧 Penguin Finder")
+st.write(f"전 세계 **{len(PENGUINS)}종의 펭귄** 정보를 한눈에 찾아보세요!")
 
-# 검색창
-query = st.text_input("🔍 펭귄 이름 검색 (예: 황제펭귄, 바위뛰기, 블루, 아프리카)")
+query = st.text_input("🔍 펭귄 이름 검색 (예: 황제펭귄, 아델리, 갈라파고스, 턱끈)")
 
 if query:
-    # 한국어 이름 또는 영어 이름 검색
+    # 한국어 이름 또는 영문 이름에서 검색어 매칭
     matches = [
         name for name, info in PENGUINS.items() 
         if query.strip().lower() in name.lower() or query.strip().lower() in info["영명"].lower()
@@ -221,11 +219,8 @@ if query:
             </div>
             """, unsafe_allow_html=True)
             
-            # 고화질 이미지 출력 (fallback 메시지 포함)
-            try:
-                st.image(info["이미지"], caption=f"{name} ({info['영명']})", use_container_width=True)
-            except Exception:
-                st.warning("⚠️ 이미지를 로드하는 중 네트워크 오류가 발생했습니다.")
+            # 정확한 펭귄 사진 출력
+            st.image(info["이미지"], caption=f"{name} ({info['영명']})", use_container_width=True)
                 
             st.write(f"**📍 서식지:** {info['서식지']}")
             st.write(f"**📏 키:** {info['키']}")
@@ -236,12 +231,11 @@ if query:
             
         st.success(f"총 {len(matches)}종의 검색 결과를 찾았습니다.")
     else:
-        st.error("검색하신 펭귄을 찾을 수 없습니다. 다르게 검색해 보세요!")
+        st.error("검색하신 펭귄을 찾을 수 없습니다.")
 else:
-    st.info("💡 Tip: 전체 펭귄 목록을 보시려면 검색창 아래 탭을 눌러보세요.")
+    st.info("💡 팁: 전체 펭귄 목록을 보시려면 아래 창을 클릭해보세요.")
     
-    # 전체 펭귄 목록을 볼 수 있는 탭 기능 제공
-    with st.expander("📖 전체 펭귄 목록 보기 (18종)"):
+    with st.expander("📖 전체 18종 펭귄 목록 보기"):
         cols = st.columns(2)
         for idx, (p_name, p_info) in enumerate(PENGUINS.items()):
             with cols[idx % 2]:
