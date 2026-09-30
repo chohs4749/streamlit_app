@@ -389,7 +389,7 @@ function traceRays() {
     drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
     if (type === "convexLens" || type === "concaveLens") {
-        // 렌즈 입사면/출사면 정확한 2회 굴절 연산
+        // 렌즈 입사면과 출사면 경계면에서 정확히 2회 굴절
         const frontX = ox - th/2;
         const backX = ox + th/2;
         const tFront = (frontX - p.x) / d.x;
@@ -399,9 +399,10 @@ function traceRays() {
             if (Math.abs(hitIn.y - axisY) <= hLimit) {
                 drawLine(p, hitIn, "#e53935", 4); // 1. 입사 전 광선
 
+                const yRatio = (hitIn.y - axisY) / hLimit;
                 const normal1 = type === "convexLens" ? 
-                    normalize({ x: -1, y: -(hitIn.y - axisY) / hLimit }) : 
-                    normalize({ x: 1, y: (hitIn.y - axisY) / hLimit });
+                    normalize({ x: -1, y: -yRatio * 0.7 }) : 
+                    normalize({ x: 1, y: yRatio * 0.7 });
                 const ref1 = refract(d, normal1, 1.0, 1.5);
                 const internalRay = ref1.ray;
 
@@ -411,8 +412,8 @@ function traceRays() {
                     drawLine(hitIn, hitOut, "#e53935", 4); // 2. 렌즈 내부 통과 광선
 
                     const normal2 = type === "convexLens" ? 
-                        normalize({ x: 1, y: (hitOut.y - axisY) / hLimit }) : 
-                        normalize({ x: -1, y: -(hitOut.y - axisY) / hLimit });
+                        normalize({ x: 1, y: yRatio * 0.7 }) : 
+                        normalize({ x: -1, y: -yRatio * 0.7 });
                     const ref2 = refract(internalRay, normal2, 1.5, 1.0);
                     const finalRay = ref2.ray;
 
@@ -426,7 +427,6 @@ function traceRays() {
     else if (type === "planeMirror") {
         const t = (ox - p.x) / d.x;
         const hitPoint = add(p, mul(d, t));
-        // 거울 범위 내에 닿을 때만 반사, 벗어나면 직진
         if (t > 0 && Math.abs(hitPoint.y - axisY) <= hLimit) {
             drawLine(p, hitPoint, "#e53935", 4);
             const n = { x: -1, y: 0 };
@@ -439,11 +439,12 @@ function traceRays() {
     }
     else if (type === "concaveMirror") {
         const R = parseFloat(radius.value);
-        const center = { x: ox - R, y: axisY };
+        const center = { x: ox + R, y: axisY };
         const t = rayCircleIntersection(p, d, center, R);
         if (t !== null) {
             const actualHit = add(p, mul(d, t));
-            if (Math.abs(actualHit.y - axisY) <= hLimit && actualHit.x <= ox) {
+            // 실제로 거울 표면 범위(hLimit 및 ox 위치) 내에 닿을 때만 반사
+            if (Math.abs(actualHit.y - axisY) <= hLimit && actualHit.x <= ox + 2 && actualHit.x >= ox - R) {
                 drawLine(p, actualHit, "#e53935", 4);
                 const normal = normalize(sub(center, actualHit));
                 const dotND = dot(d, normal);
@@ -456,11 +457,12 @@ function traceRays() {
     }
     else if (type === "convexMirror") {
         const R = parseFloat(radius.value);
-        const center = { x: ox + R, y: axisY };
+        const center = { x: ox - R, y: axisY }; // 볼록거울 곡률 중심 좌표 정상 반영
         const t = rayCircleIntersection(p, d, center, R);
         if (t !== null) {
             const actualHit = add(p, mul(d, t));
-            if (Math.abs(actualHit.y - axisY) <= hLimit && actualHit.x <= ox) {
+            // 실제로 볼록거울 표면 범위(hLimit 및 ox 위치) 내에 닿을 때만 반사
+            if (Math.abs(actualHit.y - axisY) <= hLimit && actualHit.x <= ox + 2 && actualHit.x >= ox - R) {
                 drawLine(p, actualHit, "#e53935", 4);
                 const normal = normalize(sub(actualHit, center));
                 const dotND = dot(d, normal);
@@ -480,11 +482,10 @@ function traceRays() {
         const Vtop = { x: ox, y: axisY - height / 2 };
         const Vbr = { x: ox + base / 2, y: axisY + height / 2 };
 
-        // 프리즘의 모든 면(좌측면, 우측면, 밑면) 검출을 위한 삼각 모서리 리스트
         const edges = [
-            { a: Vbl, b: Vtop, nextA: Vtop, nextB: Vbr },
-            { a: Vtop, b: Vbr, nextA: Vbl, nextB: Vtop },
-            { a: Vbl, b: Vbr, nextA: Vtop, nextB: Vbl }
+            { a: Vbl, b: Vtop },
+            { a: Vtop, b: Vbr },
+            { a: Vbl, b: Vbr }
         ];
 
         let firstHit = null;
@@ -510,7 +511,6 @@ function traceRays() {
             const ref1 = refract(d, normal1, 1.0, 1.5);
             const rRay1 = ref1.ray;
 
-            // 출사면 교차점 찾기 (나머지 두 면 검사)
             let secondHit = null;
             let secondFace = null;
             for (let edge of edges) {
