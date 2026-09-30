@@ -1195,6 +1195,58 @@ function rayLensSurfaceIntersection(
 
 
 /* =========================================================
+   스넬의 법칙에 따른 굴절 계산
+   ========================================================= */
+
+function refract(d, normal, n1, n2) {
+
+    let N = normalize(normal);
+
+    let cosI = -dot(d, N);
+
+    /* 법선 방향이 반대로 들어온 경우 자동으로 뒤집는다. */
+    if(cosI < 0) {
+        N = {
+            x:-N.x,
+            y:-N.y
+        };
+        cosI = -dot(d, N);
+    }
+
+    const eta = n1/n2;
+    const k = 1 - eta*eta*(1-cosI*cosI);
+
+    /* 전반사가 일어나는 경우 */
+    if(k < 0) {
+
+        const reflected = {
+            x:d.x - 2*dot(d,N)*N.x,
+            y:d.y - 2*dot(d,N)*N.y
+        };
+
+        return {
+            ray:normalize(reflected),
+            totalInternalReflection:true
+        };
+
+    }
+
+    const cosT = Math.sqrt(k);
+
+    const ray = normalize({
+        x:eta*d.x + (eta*cosI-cosT)*N.x,
+        y:eta*d.y + (eta*cosI-cosT)*N.y
+    });
+
+    return {
+        ray,
+        totalInternalReflection:false
+    };
+
+}
+
+
+/* =========================================================
    광선 추적
    ========================================================= */
 
