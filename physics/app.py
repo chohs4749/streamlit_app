@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 st.set_page_config(
-    page_title="렌즈,거울,프리즘 실험해보기 (정밀 수정버전)",
+    page_title="렌즈,거울,프리즘 실험해보기 (완벽 물리 광선 연동)",
     page_icon="🔬",
     layout="wide"
 )
@@ -242,7 +242,15 @@ function drawAxis() {
     drawText("광축", 1015, axisY - 10, 13, "#888");
 }
 
-/* --- 각 기구 그래픽 렌더링 함수 --- */
+/* --- 기구 모양 정확한 렌더링 함수 --- */
+function getLensCircleSpecs() {
+    const x = objectXPos;
+    const h = parseFloat(deviceSize.value);
+    const th = parseFloat(lensThickness.value);
+    const R = (h * h / 4 + (th/2) * (th/2)) / th;
+    return { R, h };
+}
+
 function drawConvexLens() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
@@ -346,7 +354,7 @@ function getSegmentIntersection(p, d, a, b) {
     const ap = sub(a, p);
     const t = (ap.x * (-v.y) - ap.y * (-v.x)) / cross;
     const s = (d.x * ap.y - d.y * ap.x) / cross;
-    if (t > 0 && s >= 0 && s <= 1) {
+    if (t > 1e-4 && s >= 0 && s <= 1) {
         return { t, s, point: add(p, mul(d, t)) };
     }
     return null;
@@ -362,7 +370,7 @@ function rayCircleIntersectionStrict(p, d, specs) {
     
     const t1 = (-B - Math.sqrt(disc)) / (2 * A);
     const t2 = (-B + Math.sqrt(disc)) / (2 * A);
-    let ts = [t1, t2].filter(t => t > 0);
+    let ts = [t1, t2].filter(t => t > 1e-4);
     if (ts.length === 0) return null;
     ts.sort((a,b) => a - b);
 
@@ -373,6 +381,31 @@ function rayCircleIntersectionStrict(p, d, specs) {
         if (specs.startAngle < 0 && normalizedAngle > Math.PI) normalizedAngle -= 2 * Math.PI;
         
         if (normalizedAngle >= specs.startAngle - 0.02 && normalizedAngle <= specs.endAngle + 0.02) {
+            return { t, point: hit };
+        }
+    }
+    return null;
+}
+
+function rayLensSurfaceIntersection(p, d, cx, cy, R, isConvex, isFront) {
+    const L = sub(p, { x: cx, y: cy });
+    const A = 1;
+    const B = 2 * dot(L, d);
+    const C = dot(L, L) - R * R;
+    const disc = B * B - 4 * A * C;
+    if (disc < 0) return null;
+
+    const t1 = (-B - Math.sqrt(disc)) / (2 * A);
+    const t2 = (-B + Math.sqrt(disc)) / (2 * A);
+    let ts = [t1, t2].filter(t => t > 1e-4);
+    if (ts.length === 0) return null;
+    ts.sort((a,b) => a - b);
+
+    const hLimit = parseFloat(deviceSize.value) / 2;
+
+    for (let t of ts) {
+        const hit = add(p, mul(d, t));
+        if (Math.abs(hit.y - axisY) <= hLimit) {
             return { t, point: hit };
         }
     }
@@ -399,7 +432,7 @@ function refract(incident, normal, n1, n2) {
     return { ray: normalize({ x: rx, y: ry }), tir: false };
 }
 
-/* --- 완벽하게 보정된 물리 광선 추적 함수 --- */
+/* --- 엄격한 물리 광선 추적 함수 --- */
 function traceRays() {
     const type = objectType.value;
     const ox = objectXPos;
@@ -413,67 +446,63 @@ function traceRays() {
         return;
     }
 
-    // 직진했을 때의 원래 경로 점선
+    // 직진 경로 점선
     drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
     if (type === "convexLens") {
-        const frontX = ox - th/2;
-        const t = (frontX - p.x) / d.x;
-        if (t > 0) {
-            const hitIn = add(p, mul(d, t));
-            if (Math.abs(hitIn.y - axisY) <= hLimit) {
-                drawLine(p, hitIn, "#e53935", 4);
+        const R = (hLimit * hLimit + (th/2) * (th/2)) / (th/2);
+        const frontCx = ox - R + th/2;
+        const hitInRes = rayLensSurfaceIntersection(p, d, frontCx, axisY, R, true, true);
+        
+        if (hitInRes) {
+            const hitIn = hitInRes.point;
+            drawLine(p, hitIn, "#e53935", 4);
 
-                const yRatio = (hitIn.y - axisY) / hLimit;
-                const normal1 = normalize({ x: -1, y: -yRatio * 0.7 });
-                const ref1 = refract(d, normal1, 1.0, 1.5);
-                const internalRay = ref1.ray;
+            const normal1 = normalize(sub(hitIn, { x: frontCx, y: axisY }));
+            const ref1 = refract(d, normal1, 1.0, 1.5);
+            const internalRay = ref1.ray;
 
-                const backX = ox + th/2;
-                const tBack = (backX - hitIn.x) / internalRay.x;
-                if (tBack > 0) {
-                    const hitOut = add(hitIn, mul(internalRay, tBack));
-                    drawLine(hitIn, hitOut, "#e53935", 4);
+            const backCx = ox + R - th/2;
+            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCx, axisY, R, true, false);
+            if (hitOutRes) {
+                const hitOut = hitOutRes.point;
+                drawLine(hitIn, hitOut, "#e53935", 4);
 
-                    const outYRatio = (hitOut.y - axisY) / hLimit;
-                    const normal2 = normalize({ x: 1, y: outYRatio * 0.7 });
-                    const ref2 = refract(internalRay, normal2, 1.5, 1.0);
-                    const finalRay = ref2.ray;
+                const normal2 = normalize(sub({ x: backCx, y: axisY }, hitOut));
+                const ref2 = refract(internalRay, normal2, 1.5, 1.0);
+                const finalRay = ref2.ray;
 
-                    drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4);
-                    return;
-                }
+                drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4);
+                return;
             }
         }
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
     else if (type === "concaveLens") {
-        const frontX = ox - th*1.2;
-        const t = (frontX - p.x) / d.x;
-        if (t > 0) {
-            const hitIn = add(p, mul(d, t));
-            if (Math.abs(hitIn.y - axisY) <= hLimit) {
-                drawLine(p, hitIn, "#e53935", 4);
+        const R = (hLimit * hLimit + (th/2) * (th/2)) / (th/2);
+        const frontCx = ox + R - th/2;
+        const hitInRes = rayLensSurfaceIntersection(p, d, frontCx, axisY, R, false, true);
 
-                const yRatio = (hitIn.y - axisY) / hLimit;
-                const normal1 = normalize({ x: 1, y: yRatio * 0.7 });
-                const ref1 = refract(d, normal1, 1.0, 1.5);
-                const internalRay = ref1.ray;
+        if (hitInRes) {
+            const hitIn = hitInRes.point;
+            drawLine(p, hitIn, "#e53935", 4);
 
-                const backX = ox + th*0.3;
-                const tBack = (backX - hitIn.x) / internalRay.x;
-                if (tBack > 0) {
-                    const hitOut = add(hitIn, mul(internalRay, tBack));
-                    drawLine(hitIn, hitOut, "#e53935", 4);
+            const normal1 = normalize(sub({ x: frontCx, y: axisY }, hitIn));
+            const ref1 = refract(d, normal1, 1.0, 1.5);
+            const internalRay = ref1.ray;
 
-                    const outYRatio = (hitOut.y - axisY) / hLimit;
-                    const normal2 = normalize({ x: -1, y: -outYRatio * 0.7 });
-                    const ref2 = refract(internalRay, normal2, 1.5, 1.0);
-                    const finalRay = ref2.ray;
+            const backCx = ox - R + th/2;
+            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCx, axisY, R, false, false);
+            if (hitOutRes) {
+                const hitOut = hitOutRes.point;
+                drawLine(hitIn, hitOut, "#e53935", 4);
 
-                    drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4);
-                    return;
-                }
+                const normal2 = normalize(sub(hitOut, { x: backCx, y: axisY }));
+                const ref2 = refract(internalRay, normal2, 1.5, 1.0);
+                const finalRay = ref2.ray;
+
+                drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4);
+                return;
             }
         }
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
@@ -481,7 +510,7 @@ function traceRays() {
     else if (type === "planeMirror") {
         const t = (ox - p.x) / d.x;
         const hitPoint = add(p, mul(d, t));
-        if (t > 0 && Math.abs(hitPoint.y - axisY) <= hLimit) {
+        if (t > 1e-4 && Math.abs(hitPoint.y - axisY) <= hLimit) {
             drawLine(p, hitPoint, "#e53935", 4);
             const n = { x: -1, y: 0 };
             const dotND = dot(d, n);
