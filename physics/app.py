@@ -13,7 +13,7 @@ st.markdown(
     """
     - **노란색 손잡이 (레이저)**: 드래그하여 레이저의 발사 방향을 조절하세요.
     - **광학 기구 직접 드래그**: 렌즈, 거울, 프리즘 기구를 마우스로 직접 클릭하여 좌우로 이동할 수 있습니다.
-    - 슬라이더를 통해 광학 기구의 크기와 곡률, 프리즘 각도를 세밀하게 조절해 보세요.
+    - **점선**: 굴절이나 반사가 일어나지 않고 직진했을 때의 원래 레이저 경로입니다.
     """
 )
 
@@ -85,9 +85,8 @@ input[type="range"] {
     gap: 7px;
 }
 .real-line { width: 40px; border-top: 4px solid #e53935; }
-.virtual-line { width: 40px; border-top: 2px dashed #777; }
+.virtual-line { width: 40px; border-top: 2px dashed #ff9800; }
 .normal-line { width: 40px; border-top: 2px dashed #1976d2; }
-.info { line-height: 1.8; font-size: 15px; }
 </style>
 </head>
 <body>
@@ -112,14 +111,14 @@ input[type="range"] {
 
     <div class="control-grid">
         <label>기구 크기 (높이)</label>
-        <input id="deviceSize" type="range" min="100" max="260" value="160">
-        <span id="deviceSizeValue" class="value">160</span>
+        <input id="deviceSize" type="range" min="120" max="360" value="220">
+        <span id="deviceSizeValue" class="value">220</span>
     </div>
 
     <div id="radiusRow" class="control-grid" style="display:none;">
         <label>거울 곡률반지름 (R)</label>
-        <input id="radius" type="range" min="100" max="300" value="200">
-        <span id="radiusValue" class="value">200</span>
+        <input id="radius" type="range" min="100" max="350" value="220">
+        <span id="radiusValue" class="value">220</span>
     </div>
 
     <div id="prismRow" class="control-grid" style="display:none;">
@@ -130,19 +129,12 @@ input[type="range"] {
 </div>
 
 <div class="panel">
-    <canvas id="canvas" width="1100" height="650"></canvas>
+    <canvas id="canvas" width="1100" height="680"></canvas>
     <div class="legend">
-        <div class="legend-item"><span class="real-line"></span> 실제 레이저 광선</div>
-        <div class="legend-item"><span class="virtual-line"></span> 연장선 / 허상 (점선)</div>
+        <div class="legend-item"><span class="real-line"></span> 실제 레이저 광선 (굴절/반사)</div>
+        <div class="legend-item"><span class="virtual-line"></span> 직진했을 때의 원래 경로 (점선)</div>
         <div class="legend-item"><span class="normal-line"></span> 광축</div>
     </div>
-</div>
-
-<div class="panel info">
-    <div><b>현재 광학 기구:</b> <span id="objectInfo">볼록렌즈</span></div>
-    <div><b>레이저 각도:</b> <span id="angleInfo">0°</span></div>
-    <div><b>기구 위치 X:</b> <span id="positionInfo">650</span></div>
-    <div id="physicsInfo"></div>
 </div>
 
 <script>
@@ -212,7 +204,6 @@ function getCanvasMousePos(e) {
 }
 
 function drawLaserAndHandle() {
-    // 레이저 본체
     ctx.beginPath();
     ctx.arc(laser.x, laser.y, 24, 0, Math.PI*2);
     ctx.fillStyle = "#333";
@@ -221,7 +212,6 @@ function drawLaserAndHandle() {
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // 레이저 방향 조절 손잡이 ("레이저"로 표기)
     const lHandle = laserHandlePos();
     drawLine({x: laser.x, y: laser.y}, lHandle, "#fbc02d", 12);
     ctx.beginPath();
@@ -233,7 +223,6 @@ function drawLaserAndHandle() {
     ctx.stroke();
     drawText("레이저", lHandle.x - 22, lHandle.y - 20, 11, "#555");
 
-    // 발사구
     ctx.beginPath();
     ctx.arc(laser.x, laser.y, 7, 0, Math.PI*2);
     ctx.fillStyle = "#ff0000";
@@ -245,7 +234,7 @@ function drawAxis() {
     drawText("광축", 1015, axisY - 10, 13, "#888");
 }
 
-/* --- 실제 모양 광학 기구 드로잉 (이름 및 설명 제거) --- */
+/* --- 광학 기구 드로잉 --- */
 function drawConvexLens() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
@@ -324,7 +313,6 @@ function drawPrism() {
     ctx.stroke();
 }
 
-/* --- 선분 교차 계산 함수 --- */
 function getSegmentIntersection(p, d, a, b) {
     const v = sub(b, a);
     const cross = d.x * (-v.y) - d.y * (-v.x);
@@ -338,7 +326,6 @@ function getSegmentIntersection(p, d, a, b) {
     return null;
 }
 
-/* --- Snell's Law 굴절 계산 함수 --- */
 function refract(incident, normal, n1, n2) {
     let cosi = -dot(incident, normal);
     let etai = n1, etat = n2;
@@ -352,7 +339,6 @@ function refract(incident, normal, n1, n2) {
     const eta = etai / etat;
     const k = 1 - eta * eta * (1 - cosi * cosi);
     if (k < 0) {
-        // 전반사 시 반사 광선 반환
         return { ray: { x: incident.x - 2 * dot(incident, n) * n.x, y: incident.y - 2 * dot(incident, n) * n.y }, tir: true };
     }
     const rx = eta * incident.x + (eta * cosi - Math.sqrt(k)) * n.x;
@@ -360,12 +346,13 @@ function refract(incident, normal, n1, n2) {
     return { ray: normalize({ x: rx, y: ry }), tir: false };
 }
 
-/* --- 광선 작도 및 물리 연산 (점선 및 프리즘 실제 굴절 포함) --- */
+/* --- 광선 작도 및 물리 연산 --- */
 function traceRays() {
     const type = objectType.value;
     const ox = objectXPos;
     const p = { x: laser.x, y: laser.y };
     const d = normalize({ x: Math.cos(laser.angle), y: Math.sin(laser.angle) });
+    const hLimit = parseFloat(deviceSize.value) / 2;
 
     if (Math.abs(d.x) < 1e-5) {
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
@@ -380,71 +367,94 @@ function traceRays() {
 
     const hitPoint = add(p, mul(d, t));
     const dy = hitPoint.y - axisY;
-    const hLimit = parseFloat(deviceSize.value) / 2;
 
+    // 거울 및 렌즈 높이 판정 (범위를 벗어나면 직진)
     if (Math.abs(dy) > hLimit && type !== 'prism') {
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
         return;
     }
 
-    // 입사광선
+    // 1. 실제 레이저 입사 광선
     drawLine(p, hitPoint, "#e53935", 4);
-
-    let infoText = "";
+    // 2. 직진했을 때의 원래 경로 점선 (출발지부터 쭉 직진)
+    drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
     if (type === "convexLens") {
-        let outDir;
-        if (Math.abs(dy) < 1e-3) {
-            outDir = d;
-        } else {
-            const focus = { x: ox + 160, y: axisY };
-            outDir = normalize(sub(focus, hitPoint));
-        }
-        drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
-        // 초점 연장선 점선 추가
-        drawLine(hitPoint, { x: ox + 160, y: axisY }, "#777", 2, true);
-        infoText = "볼록렌즈: 굴절에 의해 빛이 초점 쪽으로 수렴하며 점선으로 초점 경로가 표시됩니다.";
+        // 볼록렌즈: 두 번 굴절 (입사면에서 안쪽으로 꺾이고, 출사면에서 모임)
+        const hitIn = { x: ox - 15, y: hitPoint.y };
+        const hitOut = { x: ox + 15, y: hitPoint.y };
+        
+        drawLine(p, hitIn, "#e53935", 4);
+        const internalDir = normalize({ x: 1, y: d.y * 0.5 });
+        drawLine(hitIn, hitOut, "#e53935", 4);
+
+        const focus = { x: ox + 180, y: axisY };
+        const outDir = normalize(sub(focus, hitOut));
+        drawLine(hitOut, add(hitOut, mul(outDir, 800)), "#e53935", 4);
     } 
     else if (type === "concaveLens") {
-        const outDir = normalize({ x: 1, y: dy > 0 ? 0.45 : -0.45 });
-        drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
-        // 허상 연장선 점선 추가
-        drawLine(hitPoint, { x: ox - 160, y: axisY }, "#777", 2, true);
-        infoText = "오목렌즈: 발산하는 빛의 허상 연장선이 점선으로 표시됩니다.";
+        // 오목렌즈: 두 번 굴절 (입사면에서 바깥으로 꺾임)
+        const hitIn = { x: ox - 25, y: hitPoint.y };
+        const hitOut = { x: ox + 5, y: hitPoint.y };
+
+        drawLine(p, hitIn, "#e53935", 4);
+        drawLine(hitIn, hitOut, "#e53935", 4);
+
+        const outDir = normalize({ x: 1, y: dy > 0 ? 0.5 : -0.5 });
+        drawLine(hitOut, add(hitOut, mul(outDir, 800)), "#e53935", 4);
     }
     else if (type === "planeMirror") {
         const n = { x: -1, y: 0 };
         const dotND = dot(d, n);
         const outDir = { x: d.x - 2 * dotND * n.x, y: d.y - 2 * dotND * n.y };
         drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
-        // 거울 뒤쪽 가상 연장선 점선 추가
-        drawLine(hitPoint, { x: ox - 100, y: hitPoint.y }, "#777", 2, true);
-        infoText = "평면거울: 반사법칙에 따라 반사되며 뒤쪽에 가상 연장선(점선)이 생깁니다.";
     }
     else if (type === "concaveMirror") {
         const R = parseFloat(radius.value);
         const center = { x: ox + R, y: axisY };
-        const normal = normalize(sub(hitPoint, center));
+        
+        // 레이저 연장선과 오목거울 구면의 실제 교차점 계산
+        const distFromCenter = Math.hypot(hitPoint.x - center.x, hitPoint.y - center.y);
+        const actualHitX = center.x - R * Math.cos(Math.atan2(hitPoint.y - center.y, hitPoint.x - center.x));
+        const actualHitY = center.y - R * Math.sin(Math.atan2(hitPoint.y - center.y, hitPoint.x - center.x));
+        const actualHit = { x: actualHitX, y: actualHitY };
+
+        const normal = normalize(sub(actualHit, center));
         const dotND = dot(d, normal);
         const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
-        drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
-        // 초점 점선 표시
-        drawLine(hitPoint, { x: ox - R/2, y: axisY }, "#777", 2, true);
-        infoText = "오목거울: 구면 반사에 의해 빛이 초점(F=R/2)으로 모입니다.";
+
+        // 기존 히트포인트 대신 정확한 구면 히트포인트로 갱신
+        ctx.clearRect(0, 0, W, H);
+        drawAxis();
+        drawConcaveMirror();
+        drawLaserAndHandle();
+        drawLine(p, actualHit, "#e53935", 4);
+        drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
+        drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
     }
     else if (type === "convexMirror") {
         const R = parseFloat(radius.value);
         const center = { x: ox - R, y: axisY };
-        const normal = normalize(sub(center, hitPoint));
+
+        // 볼록거울 구면과의 정확한 교차점 계산
+        const angleToHit = Math.atan2(hitPoint.y - center.y, hitPoint.x - center.x);
+        const actualHitX = center.x + R * Math.cos(angleToHit);
+        const actualHitY = center.y + R * Math.sin(angleToHit);
+        const actualHit = { x: actualHitX, y: actualHitY };
+
+        const normal = normalize(sub(center, actualHit));
         const dotND = dot(d, normal);
         const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
-        drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
-        // 거울 내부 허상 초점 점선
-        drawLine(hitPoint, { x: ox + R/2, y: axisY }, "#777", 2, true);
-        infoText = "볼록거울: 빛이 퍼져나가며 거울 뒤쪽 초점으로 모이는 듯한 연장선(점선)이 생깁니다.";
+
+        ctx.clearRect(0, 0, W, H);
+        drawAxis();
+        drawConvexMirror();
+        drawLaserAndHandle();
+        drawLine(p, actualHit, "#e53935", 4);
+        drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
+        drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
     }
     else if (type === "prism") {
-        // 프리즘 정밀 굴절 (스넬의 법칙)
         const A = parseFloat(prismAngle.value) * Math.PI / 180;
         const base = parseFloat(deviceSize.value);
         const height = base / (2 * Math.tan(A / 2));
@@ -453,51 +463,32 @@ function traceRays() {
         const Vtop = { x: ox, y: axisY - height / 2 };
         const Vbr = { x: ox + base / 2, y: axisY + height / 2 };
 
-        // 1. 왼쪽 경계면 (Vbl -> Vtop) 교차 검사
         const inter1 = getSegmentIntersection(p, d, Vbl, Vtop);
         if (inter1) {
             drawLine(p, inter1.point, "#e53935", 4);
             
-            // 왼쪽 면 법선 (바깥쪽 방향: 왼쪽 위를 향함)
             const vLeft = sub(Vtop, Vbl);
             let normal1 = normalize({ x: -vLeft.y, y: vLeft.x });
             if (dot(d, normal1) > 0) normal1 = { x: -normal1.x, y: -normal1.y };
 
-            // 첫 번째 굴절 (공기 n=1.0 -> 유리 n=1.5)
             const ref1 = refract(d, normal1, 1.0, 1.5);
             const rRay1 = ref1.ray;
 
-            // 2. 오른쪽 경계면 (Vtop -> Vbr) 또는 밑면 교차 검사
             const inter2 = getSegmentIntersection(inter1.point, rRay1, Vtop, Vbr);
             if (inter2) {
-                // 내부 광선
                 drawLine(inter1.point, inter2.point, "#e53935", 4);
-                // 내부 진행 경로 점선
-                drawLine(inter1.point, inter2.point, "#777", 1, true);
 
-                // 오른쪽 면 법선
                 const vRight = sub(Vbr, Vtop);
                 let normal2 = normalize({ x: vRight.y, y: -vRight.x });
                 if (dot(rRay1, normal2) > 0) normal2 = { x: -normal2.x, y: -normal2.y };
 
-                // 두 번째 굴절 (유리 n=1.5 -> 공기 n=1.0)
                 const ref2 = refract(rRay1, normal2, 1.5, 1.0);
                 const rRay2 = ref2.ray;
 
-                // 최종 출사 광선
                 drawLine(inter2.point, add(inter2.point, mul(rRay2, 800)), "#e53935", 4);
-                infoText = "프리즘: 스넬의 법칙에 따라 입사면과 출사면 두 번에 걸쳐 정확하게 굴절됩니다.";
-            } else {
-                drawLine(inter1.point, add(inter1.point, mul(rRay1, 800)), "#e53935", 4);
-                infoText = "프리즘 내부 굴절 광선";
             }
-        } else {
-            drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
-            infoText = "프리즘에 광선이 도달하지 않았습니다.";
         }
     }
-
-    document.getElementById("physicsInfo").innerHTML = "<b>광학 현상:</b> " + infoText;
 }
 
 function updateVisibility() {
@@ -520,26 +511,20 @@ function render() {
 
     drawLaserAndHandle();
     traceRays();
-
-    document.getElementById("objectInfo").innerText = objectType.options[objectType.selectedIndex].text;
-    document.getElementById("angleInfo").innerText = Math.round(laser.angle * 180 / Math.PI) + "°";
-    document.getElementById("positionInfo").innerText = Math.round(objectXPos);
 }
 
 /* --- 마우스 인터랙션 --- */
 canvas.addEventListener("mousedown", (e) => {
     const mouse = getCanvasMousePos(e);
 
-    // 1. 레이저 손잡이 드래그 체크
     const lHandle = laserHandlePos();
     if (Math.hypot(mouse.x - lHandle.x, mouse.y - lHandle.y) < 25) {
         draggingLaserHandle = true;
         return;
     }
 
-    // 2. 광학 기구 직접 드래그 체크
     const hLimit = parseFloat(deviceSize.value) / 2;
-    if (mouse.x >= objectXPos - 60 && mouse.x <= objectXPos + 60 && mouse.y >= axisY - hLimit - 20 && mouse.y <= axisY + hLimit + 20) {
+    if (mouse.x >= objectXPos - 70 && mouse.x <= objectXPos + 70 && mouse.y >= axisY - hLimit - 30 && mouse.y <= axisY + hLimit + 30) {
         draggingDevice = true;
         return;
     }
@@ -563,7 +548,6 @@ window.addEventListener("mouseup", () => {
     draggingDevice = false;
 });
 
-// UI 이벤트 연동
 objectType.addEventListener("change", () => { updateVisibility(); render(); });
 deviceSize.addEventListener("input", () => { document.getElementById("deviceSizeValue").innerText = deviceSize.value; render(); });
 radius.addEventListener("input", () => { document.getElementById("radiusValue").innerText = radius.value; render(); });
@@ -576,4 +560,4 @@ render();
 </html>
 """
 
-components.html(html_code, height=900, scrolling=True)
+components.html(html_code, height=920, scrolling=True)
