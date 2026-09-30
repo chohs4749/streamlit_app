@@ -9,9 +9,12 @@ st.set_page_config(
 
 st.title("🔴 레이저 광학 시뮬레이터")
 
-st.write(
-    "레이저 손잡이를 직접 움직여 광선의 방향을 바꾸고, "
-    "렌즈·거울·프리즘에서 일어나는 반사와 굴절을 관찰할 수 있습니다."
+st.markdown(
+    """
+    레이저 손잡이를 드래그하여 입사 방향을 바꿀 수 있습니다.
+    렌즈와 거울, 프리즘의 위치와 물리적 조건을 변화시키면서
+    반사와 굴절을 관찰할 수 있습니다.
+    """
 )
 
 html = r"""
@@ -30,46 +33,44 @@ html = r"""
 
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
+    font-family: Arial, "Malgun Gothic", sans-serif;
     background: #f4f6f8;
     color: #222;
 }
 
 .panel {
     background: white;
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.10);
 }
 
 .control-grid {
     display: grid;
-    grid-template-columns: 150px 1fr 100px;
-    gap: 12px;
+    grid-template-columns: 170px 1fr 110px;
+    gap: 14px;
     align-items: center;
-    margin-bottom: 12px;
-}
-
-select,
-input[type="range"] {
-    width: 100%;
+    margin-bottom: 13px;
 }
 
 select {
-    padding: 8px;
-    border-radius: 6px;
+    width: 100%;
+    padding: 9px;
     border: 1px solid #aaa;
+    border-radius: 7px;
     font-size: 15px;
+    background: white;
 }
 
 input[type="range"] {
+    width: 100%;
     cursor: pointer;
 }
 
 .value {
-    font-weight: bold;
     text-align: right;
+    font-weight: bold;
 }
 
 #canvas {
@@ -78,22 +79,50 @@ input[type="range"] {
     height: auto;
     background: white;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    cursor: default;
+    border: 1px solid #ddd;
+}
+
+.legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    font-size: 14px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.real-line {
+    width: 40px;
+    border-top: 4px solid #e53935;
+}
+
+.virtual-line {
+    width: 40px;
+    border-top: 2px dashed #777;
+}
+
+.normal-line {
+    width: 40px;
+    border-top: 2px dashed #1976d2;
 }
 
 .info {
     line-height: 1.8;
+    font-size: 15px;
 }
 
-.warning {
-    color: #c62828;
+.highlight {
     font-weight: bold;
+    color: #1565c0;
 }
 
-.small {
+.virtual {
     color: #666;
-    font-size: 13px;
 }
 
 </style>
@@ -101,6 +130,7 @@ input[type="range"] {
 </head>
 
 <body>
+
 
 <div class="panel">
 
@@ -130,26 +160,24 @@ input[type="range"] {
     </div>
 
 
-    <!-- 렌즈 재질 -->
-
     <div id="materialRow" class="control-grid">
 
         <label>렌즈 재질</label>
 
         <select id="material">
 
-            <option value="1.49">아크릴 / 플라스틱 (n = 1.49)</option>
+            <option value="1.49">아크릴 (n = 1.49)</option>
             <option value="1.52" selected>일반 유리 (n = 1.52)</option>
             <option value="1.62">고굴절 유리 (n = 1.62)</option>
 
         </select>
 
-        <span id="materialValue" class="value">n = 1.52</span>
+        <span id="materialValue" class="value">
+            n = 1.52
+        </span>
 
     </div>
 
-
-    <!-- 렌즈 두께 -->
 
     <div id="thicknessRow" class="control-grid">
 
@@ -159,18 +187,16 @@ input[type="range"] {
             id="thickness"
             type="range"
             min="30"
-            max="150"
-            value="80"
+            max="140"
+            value="70"
         >
 
         <span id="thicknessValue" class="value">
-            80 px
+            70
         </span>
 
     </div>
 
-
-    <!-- 거울 곡률 -->
 
     <div id="radiusRow" class="control-grid">
 
@@ -191,8 +217,6 @@ input[type="range"] {
     </div>
 
 
-    <!-- 프리즘 -->
-
     <div id="prismRow" class="control-grid">
 
         <label>프리즘 꼭짓각</label>
@@ -211,29 +235,6 @@ input[type="range"] {
 
     </div>
 
-
-    <!-- 위치 -->
-
-    <div class="control-grid">
-
-        <label>광학 기구 위치</label>
-
-        <input
-            id="position"
-            type="range"
-            min="300"
-            max="900"
-            value="650"
-        >
-
-        <span id="positionValue" class="value">
-            650
-        </span>
-
-    </div>
-
-
-    <!-- 굴절률 -->
 
     <div id="prismMaterialRow" class="control-grid">
 
@@ -254,6 +255,25 @@ input[type="range"] {
 
     </div>
 
+
+    <div class="control-grid">
+
+        <label>광학 기구 위치</label>
+
+        <input
+            id="position"
+            type="range"
+            min="350"
+            max="850"
+            value="650"
+        >
+
+        <span id="positionValue" class="value">
+            650
+        </span>
+
+    </div>
+
 </div>
 
 
@@ -265,32 +285,67 @@ input[type="range"] {
         height="650">
     </canvas>
 
+
+    <div class="legend">
+
+        <div class="legend-item">
+            <span class="real-line"></span>
+            실제 광선
+        </div>
+
+        <div class="legend-item">
+            <span class="virtual-line"></span>
+            광선의 연장 / 허상
+        </div>
+
+        <div class="legend-item">
+            <span class="normal-line"></span>
+            법선
+        </div>
+
+    </div>
+
 </div>
 
 
 <div class="panel info">
 
-    <b>실험 정보</b>
-
     <div>
-        광학 기구:
-        <b id="objectInfo">볼록렌즈</b>
+        <b>현재 광학 기구:</b>
+        <span id="objectInfo">볼록렌즈</span>
     </div>
 
     <div>
-        레이저 각도:
-        <b id="angleInfo">0°</b>
+        <b>레이저 방향:</b>
+        <span id="angleInfo">0°</span>
     </div>
 
     <div>
-        광학 기구 위치:
-        <b id="positionInfo">650</b>
+        <b>광학 기구 위치:</b>
+        <span id="positionInfo">650</span>
     </div>
 
     <div id="physicsInfo"></div>
 
-    <div class="small">
-        💡 노란색 손잡이를 마우스로 직접 드래그하여 레이저 방향을 바꿀 수 있습니다.
+    <div>
+        <b>광선 작도:</b>
+        <span id="imageInfo"></span>
+    </div>
+
+    <br>
+
+    <div>
+        <b>사용법</b>
+    </div>
+
+    <div>
+        노란색 손잡이를 마우스로 드래그하면 레이저의 방향이 바뀝니다.
+    </div>
+
+    <div>
+        실제로 진행하는 빛은 <b>빨간 실선</b>,
+        눈으로 직접 볼 수 없는 광선의 연장선은
+        <b>회색 점선</b>으로 나타냅니다.
     </div>
 
 </div>
@@ -298,30 +353,47 @@ input[type="range"] {
 
 <script>
 
-/* =====================================================
-   기본 설정
-===================================================== */
 
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+/* =========================================================
+   기본 설정
+========================================================= */
+
+const canvas =
+    document.getElementById("canvas");
+
+const ctx =
+    canvas.getContext("2d");
 
 const W = canvas.width;
 const H = canvas.height;
 
 const axisY = H / 2;
 
+
+/*
+    레이저 발생 위치
+
+    레이저는 기본적으로 왼쪽에서
+    오른쪽 방향으로 발사된다.
+*/
+
 const laser = {
-    x: 100,
+
+    x: 90,
+
     y: axisY,
+
     angle: 0
+
 };
+
 
 let dragging = false;
 
 
-/* =====================================================
-   HTML 요소
-===================================================== */
+/* =========================================================
+   컨트롤
+========================================================= */
 
 const objectType =
     document.getElementById("objectType");
@@ -344,6 +416,7 @@ const position =
 const prismIndex =
     document.getElementById("prismIndex");
 
+
 const materialRow =
     document.getElementById("materialRow");
 
@@ -357,12 +430,14 @@ const prismRow =
     document.getElementById("prismRow");
 
 const prismMaterialRow =
-    document.getElementById("prismMaterialRow");
+    document.getElementById(
+        "prismMaterialRow"
+    );
 
 
-/* =====================================================
-   벡터 함수
-===================================================== */
+/* =========================================================
+   벡터
+========================================================= */
 
 function add(a,b) {
 
@@ -373,6 +448,7 @@ function add(a,b) {
 
 }
 
+
 function sub(a,b) {
 
     return {
@@ -381,6 +457,7 @@ function sub(a,b) {
     };
 
 }
+
 
 function mul(a,k) {
 
@@ -391,13 +468,15 @@ function mul(a,k) {
 
 }
 
+
 function dot(a,b) {
 
     return a.x*b.x+a.y*b.y;
 
 }
 
-function len(a) {
+
+function length(a) {
 
     return Math.sqrt(
         a.x*a.x+a.y*a.y
@@ -405,12 +484,18 @@ function len(a) {
 
 }
 
-function norm(a) {
 
-    const l=len(a);
+function normalize(a) {
+
+    const l=length(a);
 
     if(l===0) {
-        return {x:1,y:0};
+
+        return {
+            x:1,
+            y:0
+        };
+
     }
 
     return {
@@ -421,31 +506,45 @@ function norm(a) {
 }
 
 
-/* =====================================================
+/* =========================================================
    선 그리기
-===================================================== */
+========================================================= */
 
-function line(
+function drawLine(
     p1,
     p2,
-    color="#ff2020",
-    width=3,
+    color="#e53935",
+    width=4,
     dashed=false
 ) {
 
     ctx.beginPath();
 
     if(dashed) {
-        ctx.setLineDash([8,7]);
+
+        ctx.setLineDash(
+            [10,8]
+        );
+
     }
     else {
+
         ctx.setLineDash([]);
+
     }
 
-    ctx.moveTo(p1.x,p1.y);
-    ctx.lineTo(p2.x,p2.y);
+    ctx.moveTo(
+        p1.x,
+        p1.y
+    );
+
+    ctx.lineTo(
+        p2.x,
+        p2.y
+    );
 
     ctx.strokeStyle=color;
+
     ctx.lineWidth=width;
 
     ctx.stroke();
@@ -455,11 +554,11 @@ function line(
 }
 
 
-/* =====================================================
+/* =========================================================
    글자
-===================================================== */
+========================================================= */
 
-function text(
+function drawText(
     value,
     x,
     y,
@@ -468,44 +567,62 @@ function text(
 ) {
 
     ctx.fillStyle=color;
-    ctx.font=size+"px Arial";
-    ctx.fillText(value,x,y);
+
+    ctx.font=
+        "bold "+size+"px Arial";
+
+    ctx.fillText(
+        value,
+        x,
+        y
+    );
 
 }
 
 
-/* =====================================================
+/* =========================================================
    반사
-===================================================== */
+========================================================= */
 
 function reflect(I,N) {
 
-    I=norm(I);
-    N=norm(N);
+    I=normalize(I);
+    N=normalize(N);
 
-    return norm(
+    return normalize(
         sub(
             I,
-            mul(N,2*dot(I,N))
+            mul(
+                N,
+                2*dot(I,N)
+            )
         )
     );
 
 }
 
 
-/* =====================================================
-   스넬의 법칙
-===================================================== */
+/* =========================================================
+   스넰의 법칙
+========================================================= */
 
-function refract(I,N,n1,n2) {
+function refract(
+    I,
+    N,
+    n1,
+    n2
+) {
 
-    I=norm(I);
-    N=norm(N);
+    I=normalize(I);
+    N=normalize(N);
 
     let cosi=
         Math.max(
             -1,
-            Math.min(1,dot(I,N))
+            Math.min(
+                1,
+                dot(I,N)
+            )
         );
 
     let etai=n1;
@@ -525,16 +642,23 @@ function refract(I,N,n1,n2) {
         etai=etat;
         etat=temp;
 
-        normal=mul(N,-1);
+        normal=
+            mul(
+                N,
+                -1
+            );
 
     }
 
-    const eta=etai/etat;
+
+    const eta=
+        etai/etat;
 
     const k=
         1-
         eta*eta*
         (1-cosi*cosi);
+
 
     /*
        전반사
@@ -546,12 +670,15 @@ function refract(I,N,n1,n2) {
 
     }
 
-    return norm(
+
+    return normalize(
         add(
             mul(I,eta),
+
             mul(
                 normal,
-                eta*cosi-Math.sqrt(k)
+                eta*cosi-
+                Math.sqrt(k)
             )
         )
     );
@@ -559,115 +686,198 @@ function refract(I,N,n1,n2) {
 }
 
 
-/* =====================================================
-   광선과 수직선의 교점
-===================================================== */
+/* =========================================================
+   광선과 수직선 교점
+========================================================= */
 
-function verticalIntersection(
+function rayVertical(
     p,
     d,
     x
 ) {
 
-    if(Math.abs(d.x)<1e-8) {
+    if(
+        Math.abs(d.x)<1e-8
+    ) {
+
         return null;
+
     }
 
-    const t=(x-p.x)/d.x;
+    const t=
+        (x-p.x)/d.x;
+
 
     if(t<=0.0001) {
+
         return null;
+
     }
 
+
     return {
+
         t:t,
-        point:add(p,mul(d,t))
+
+        point:
+            add(
+                p,
+                mul(d,t)
+            )
+
     };
 
 }
 
 
-/* =====================================================
-   원과 광선의 교점
-===================================================== */
+/* =========================================================
+   광선과 원 교점
+========================================================= */
 
-function rayCircleIntersection(
+function rayCircle(
     p,
     d,
     center,
     R
 ) {
 
-    const oc=sub(p,center);
+    const oc=
+        sub(
+            p,
+            center
+        );
 
-    const b=2*dot(d,oc);
 
-    const c=dot(oc,oc)-R*R;
+    const b=
+        2*dot(
+            d,
+            oc
+        );
+
+
+    const c=
+        dot(oc,oc)-
+        R*R;
+
 
     const discriminant=
-        b*b-4*c;
+        b*b-
+        4*c;
+
 
     if(discriminant<0) {
+
         return null;
+
     }
 
-    const root=
-        Math.sqrt(discriminant);
 
-    const t1=(-b-root)/2;
-    const t2=(-b+root)/2;
+    const root=
+        Math.sqrt(
+            discriminant
+        );
+
+
+    const t1=
+        (-b-root)/2;
+
+    const t2=
+        (-b+root)/2;
+
 
     let t=null;
 
+
     if(t1>0.0001) {
+
         t=t1;
+
     }
     else if(t2>0.0001) {
+
         t=t2;
+
     }
+
 
     if(t===null) {
+
         return null;
+
     }
 
+
     return {
+
         t:t,
-        point:add(p,mul(d,t))
+
+        point:
+            add(
+                p,
+                mul(d,t)
+            )
+
     };
 
 }
 
 
-/* =====================================================
-   선분과 광선의 교점
-===================================================== */
+/* =========================================================
+   광선과 선분 교점
+========================================================= */
 
-function raySegmentIntersection(
+function raySegment(
     p,
     d,
     a,
     b
 ) {
 
-    const v=sub(b,a);
+    const v=
+        sub(
+            b,
+            a
+        );
+
 
     const denominator=
         d.x*v.y-
         d.y*v.x;
 
-    if(Math.abs(denominator)<1e-9) {
+
+    if(
+        Math.abs(
+            denominator
+        )<1e-9
+    ) {
+
         return null;
+
     }
 
-    const ap=sub(a,p);
+
+    const ap=
+        sub(
+            a,
+            p
+        );
+
 
     const t=
-        (ap.x*v.y-ap.y*v.x)/
+        (
+            ap.x*v.y-
+            ap.y*v.x
+        )/
         denominator;
 
+
     const u=
-        (ap.x*d.y-ap.y*d.x)/
+        (
+            ap.x*d.y-
+            ap.y*d.x
+        )/
         denominator;
+
 
     if(
         t>0.0001 &&
@@ -676,61 +886,71 @@ function raySegmentIntersection(
     ) {
 
         return {
+
             t:t,
-            point:add(p,mul(d,t))
+
+            point:
+                add(
+                    p,
+                    mul(d,t)
+                )
+
         };
 
     }
+
 
     return null;
 
 }
 
 
-/* =====================================================
-   광학 기구 위치
-===================================================== */
+/* =========================================================
+   광학기구 위치
+========================================================= */
 
 function objectX() {
 
-    return parseFloat(position.value);
+    return parseFloat(
+        position.value
+    );
 
 }
 
 
-/* =====================================================
+/* =========================================================
    레이저 손잡이
-===================================================== */
+========================================================= */
 
 function handlePosition() {
 
     return {
 
         x:
-        laser.x+
-        Math.cos(laser.angle)*75,
+            laser.x+
+            Math.cos(
+                laser.angle
+            )*75,
 
         y:
-        laser.y+
-        Math.sin(laser.angle)*75
+            laser.y+
+            Math.sin(
+                laser.angle
+            )*75
 
     };
 
 }
 
 
-/* =====================================================
-   레이저 그리기
-===================================================== */
+/* =========================================================
+   레이저
+========================================================= */
 
 function drawLaser() {
 
-    const dir={
-        x:Math.cos(laser.angle),
-        y:Math.sin(laser.angle)
-    };
-
-    const handle=handlePosition();
+    const handle=
+        handlePosition();
 
 
     /*
@@ -742,28 +962,37 @@ function drawLaser() {
     ctx.arc(
         laser.x,
         laser.y,
-        23,
+        24,
         0,
         Math.PI*2
     );
 
     ctx.fillStyle="#333";
+
     ctx.fill();
 
+
     ctx.strokeStyle="#111";
+
     ctx.lineWidth=3;
+
     ctx.stroke();
 
 
     /*
-       손잡이
+       노란 손잡이
     */
 
-    line(
-        {x:laser.x,y:laser.y},
+    drawLine(
+        {
+            x:laser.x,
+            y:laser.y
+        },
+
         handle,
-        "#f4b400",
-        13
+
+        "#fbc02d",
+        14
     );
 
 
@@ -772,21 +1001,24 @@ function drawLaser() {
     ctx.arc(
         handle.x,
         handle.y,
-        14,
+        15,
         0,
         Math.PI*2
     );
 
-    ctx.fillStyle="#ffd83d";
+    ctx.fillStyle="#ffdf3f";
+
     ctx.fill();
 
     ctx.strokeStyle="#806000";
+
     ctx.lineWidth=2;
+
     ctx.stroke();
 
 
     /*
-       레이저 발생 지점
+       레이저 발생점
     */
 
     ctx.beginPath();
@@ -800,17 +1032,14 @@ function drawLaser() {
     );
 
     ctx.fillStyle="#ff0000";
+
     ctx.fill();
 
 
-    /*
-       손잡이 설명
-    */
-
-    text(
+    drawText(
         "드래그",
         handle.x-25,
-        handle.y-20,
+        handle.y-22,
         13,
         "#555"
     );
@@ -818,60 +1047,119 @@ function drawLaser() {
 }
 
 
-/* =====================================================
+/* =========================================================
    광축
-===================================================== */
+========================================================= */
 
 function drawAxis() {
 
-    line(
-        {x:30,y:axisY},
-        {x:1070,y:axisY},
+    drawLine(
+        {
+            x:30,
+            y:axisY
+        },
+
+        {
+            x:1070,
+            y:axisY
+        },
+
         "#aaa",
         1,
         true
     );
 
-    text(
+
+    drawText(
         "광축",
-        1010,
+        1015,
         axisY-10,
         13,
-        "#777"
+        "#888"
     );
 
 }
 
 
-/* =====================================================
+/* =========================================================
+   초점 표시
+========================================================= */
+
+function drawFocus(
+    x,
+    y,
+    label="F"
+) {
+
+    ctx.beginPath();
+
+    ctx.arc(
+        x,
+        y,
+        7,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fillStyle="#1976d2";
+
+    ctx.fill();
+
+
+    drawText(
+        label,
+        x+10,
+        y-10,
+        18,
+        "#1976d2"
+    );
+
+}
+
+
+/* =========================================================
    평면거울
-===================================================== */
+========================================================= */
 
 function drawPlaneMirror() {
 
-    const x=objectX();
+    const x=
+        objectX();
 
-    line(
-        {x:x,y:100},
-        {x:x,y:550},
+
+    drawLine(
+        {
+            x:x,
+            y:90
+        },
+
+        {
+            x:x,
+            y:560
+        },
+
         "#333",
-        8
+        9
     );
 
 
-    /*
-       뒷면 무늬
-    */
-
     for(
-        let y=110;
+        let y=100;
         y<550;
         y+=25
     ) {
 
-        line(
-            {x:x+5,y:y},
-            {x:x+20,y:y+15},
+        drawLine(
+            {
+                x:x+6,
+                y:y
+            },
+
+            {
+                x:x+23,
+                y:y+17
+            },
+
             "#888",
             2
         );
@@ -879,53 +1167,61 @@ function drawPlaneMirror() {
     }
 
 
-    text(
+    drawText(
         "평면거울",
-        x-38,
-        80,
+        x-42,
+        70,
         18
     );
 
 }
 
 
-/* =====================================================
+/* =========================================================
    평면거울 광선
-===================================================== */
+========================================================= */
 
 function tracePlaneMirror() {
 
-    const x=objectX();
+    const x=
+        objectX();
 
-    const d={
-        x:Math.cos(laser.angle),
-        y:Math.sin(laser.angle)
-    };
 
     const p={
         x:laser.x,
         y:laser.y
     };
 
+
+    const d={
+        x:Math.cos(
+            laser.angle
+        ),
+
+        y:Math.sin(
+            laser.angle
+        )
+    };
+
+
     const hit=
-        verticalIntersection(
+        rayVertical(
             p,
             d,
             x
         );
 
 
-    /*
-       거울을 향하지 않는 경우
-    */
-
     if(!hit) {
 
-        line(
+        drawLine(
             p,
-            add(p,mul(d,1000)),
-            "#ff2020",
-            4
+            add(
+                p,
+                mul(d,1000)
+            ),
+            "#e53935",
+            5
         );
 
         return;
@@ -934,15 +1230,18 @@ function tracePlaneMirror() {
 
 
     if(
-        hit.point.y<100 ||
-        hit.point.y>550
+        hit.point.y<90 ||
+        hit.point.y>560
     ) {
 
-        line(
+        drawLine(
             p,
-            add(p,mul(d,1000)),
-            "#ff2020",
-            4
+            add(
+                p,
+                mul(d,1000)
+            ),
+            "#e53935",
+            5
         );
 
         return;
@@ -954,11 +1253,11 @@ function tracePlaneMirror() {
        입사광
     */
 
-    line(
+    drawLine(
         p,
         hit.point,
-        "#ff2020",
-        4
+        "#e53935",
+        5
     );
 
 
@@ -966,152 +1265,243 @@ function tracePlaneMirror() {
        법선
     */
 
-    line(
+    drawLine(
         {
-            x:hit.point.x-70,
+            x:hit.point.x-80,
             y:hit.point.y
         },
+
         {
-            x:hit.point.x+70,
+            x:hit.point.x+80,
             y:hit.point.y
         },
-        "#777",
-        1,
+
+        "#1976d2",
+        2,
         true
     );
 
 
     /*
-       반사
+       반사광
     */
 
     const reflected=
         reflect(
             d,
-            {x:-1,y:0}
+            {
+                x:-1,
+                y:0
+            }
         );
 
 
-    line(
+    drawLine(
         hit.point,
+
         add(
             hit.point,
-            mul(reflected,600)
+            mul(
+                reflected,
+                650
+            )
         ),
-        "#ff2020",
-        4
+
+        "#e53935",
+        5
+    );
+
+
+    /*
+       거울 뒤쪽으로
+       반사광선을 역방향 연장
+
+       평면거울의 가상적인 광선 경로
+    */
+
+    drawLine(
+        hit.point,
+
+        add(
+            hit.point,
+            mul(
+                reflected,
+                -450
+            )
+        ),
+
+        "#777",
+        2,
+        true
+    );
+
+
+    drawText(
+        "허상 방향",
+        x+35,
+        hit.point.y-15,
+        14,
+        "#777"
     );
 
 }
 
 
-/* =====================================================
+/* =========================================================
+   곡면거울
+========================================================= */
+
+function curvedMirrorCenter(type) {
+
+    const x=
+        objectX();
+
+    const R=
+        parseFloat(
+            radius.value
+        );
+
+
+    if(
+        type==="concaveMirror"
+    ) {
+
+        return {
+
+            x:x+R,
+            y:axisY
+
+        };
+
+    }
+
+
+    return {
+
+        x:x-R,
+        y:axisY
+
+    };
+
+}
+
+
+/* =========================================================
    곡면거울 그리기
-===================================================== */
+========================================================= */
 
 function drawCurvedMirror(type) {
 
-    const x=objectX();
+    const center=
+        curvedMirrorCenter(
+            type
+        );
+
 
     const R=
-        parseFloat(radius.value);
-
-    const centerX=
-        type==="concaveMirror"
-        ? x+R
-        : x-R;
+        parseFloat(
+            radius.value
+        );
 
 
     ctx.beginPath();
 
 
-    if(type==="concaveMirror") {
+    if(
+        type==="concaveMirror"
+    ) {
 
         ctx.arc(
-            centerX,
-            axisY,
+            center.x,
+            center.y,
             R,
-            Math.PI-0.65,
-            Math.PI+0.65
+            Math.PI-0.75,
+            Math.PI+0.75
         );
 
     }
     else {
 
         ctx.arc(
-            centerX,
-            axisY,
+            center.x,
+            center.y,
             R,
-            -0.65,
-            0.65
+            -0.75,
+            0.75
         );
 
     }
 
 
     ctx.strokeStyle="#333";
-    ctx.lineWidth=8;
+
+    ctx.lineWidth=9;
 
     ctx.stroke();
 
 
-    text(
+    drawText(
         type==="concaveMirror"
         ? "오목거울"
         : "볼록거울",
-        x-45,
-        80,
+
+        objectX()-45,
+        70,
         18
     );
 
 
     /*
-       곡률 중심 표시
+       곡률 중심 C
     */
 
-    ctx.beginPath();
-
-    ctx.arc(
-        centerX,
-        axisY,
-        5,
-        0,
-        Math.PI*2
+    drawFocus(
+        center.x,
+        center.y,
+        "C"
     );
 
-    ctx.fillStyle="#1976d2";
-    ctx.fill();
+
+    /*
+       초점
+
+       거울의 초점거리는
+       곡률반지름의 약 절반
+    */
+
+    const f=
+        R/2;
+
+
+    if(
+        type==="concaveMirror"
+    ) {
+
+        drawFocus(
+            objectX()+f,
+            axisY,
+            "F"
+        );
+
+    }
+    else {
+
+        drawFocus(
+            objectX()-f,
+            axisY,
+            "F"
+        );
+
+    }
 
 }
 
 
-/* =====================================================
+/* =========================================================
    곡면거울 광선
-===================================================== */
+========================================================= */
 
 function traceCurvedMirror(type) {
-
-    const x=objectX();
-
-    const R=
-        parseFloat(radius.value);
-
-    const center={
-
-        x:
-        type==="concaveMirror"
-        ? x+R
-        : x-R,
-
-        y:axisY
-
-    };
-
-
-    const d={
-        x:Math.cos(laser.angle),
-        y:Math.sin(laser.angle)
-    };
 
     const p={
         x:laser.x,
@@ -1119,8 +1509,31 @@ function traceCurvedMirror(type) {
     };
 
 
+    const d={
+        x:Math.cos(
+            laser.angle
+        ),
+
+        y:Math.sin(
+            laser.angle
+        )
+    };
+
+
+    const center=
+        curvedMirrorCenter(
+            type
+        );
+
+
+    const R=
+        parseFloat(
+            radius.value
+        );
+
+
     const hit=
-        rayCircleIntersection(
+        rayCircle(
             p,
             d,
             center,
@@ -1130,11 +1543,14 @@ function traceCurvedMirror(type) {
 
     if(!hit) {
 
-        line(
+        drawLine(
             p,
-            add(p,mul(d,1000)),
-            "#ff2020",
-            4
+            add(
+                p,
+                mul(d,1000)
+            ),
+            "#e53935",
+            5
         );
 
         return;
@@ -1143,20 +1559,23 @@ function traceCurvedMirror(type) {
 
 
     /*
-       유효한 거울 영역인지 확인
+       거울의 실제 범위
     */
 
     if(
         Math.abs(
             hit.point.y-axisY
-        )>R*0.75
+        )>0.75*R
     ) {
 
-        line(
+        drawLine(
             p,
-            add(p,mul(d,1000)),
-            "#ff2020",
-            4
+            add(
+                p,
+                mul(d,1000)
+            ),
+            "#e53935",
+            5
         );
 
         return;
@@ -1168,20 +1587,23 @@ function traceCurvedMirror(type) {
        입사광
     */
 
-    line(
+    drawLine(
         p,
         hit.point,
-        "#ff2020",
-        4
+        "#e53935",
+        5
     );
 
 
     /*
        법선
+
+       구의 중심과
+       충돌점을 연결한 선
     */
 
     const normal=
-        norm(
+        normalize(
             sub(
                 hit.point,
                 center
@@ -1189,23 +1611,25 @@ function traceCurvedMirror(type) {
         );
 
 
-    line(
+    drawLine(
         sub(
             hit.point,
-            mul(normal,60)
+            mul(normal,70)
         ),
+
         add(
             hit.point,
-            mul(normal,60)
+            mul(normal,70)
         ),
-        "#777",
-        1,
+
+        "#1976d2",
+        2,
         true
     );
 
 
     /*
-       반사
+       반사광
     */
 
     const reflected=
@@ -1215,31 +1639,152 @@ function traceCurvedMirror(type) {
         );
 
 
-    line(
+    drawLine(
         hit.point,
+
         add(
             hit.point,
-            mul(reflected,600)
+            mul(
+                reflected,
+                700
+            )
         ),
-        "#ff2020",
-        4
+
+        "#e53935",
+        5
     );
+
+
+    /*
+       볼록거울의 경우
+       실제 반사광선을 뒤로 연장
+    */
+
+    if(
+        type==="convexMirror"
+    ) {
+
+        drawLine(
+            hit.point,
+
+            add(
+                hit.point,
+                mul(
+                    reflected,
+                    -500
+                )
+            ),
+
+            "#777",
+            2,
+            true
+        );
+
+
+        drawText(
+            "허상",
+            objectX()-125,
+            hit.point.y-15,
+            16,
+            "#777"
+        );
+
+    }
 
 }
 
 
-/* =====================================================
-   렌즈의 실제 표면
-===================================================== */
+/* =========================================================
+   렌즈 정보
+========================================================= */
+
+function lensFocalLength(
+    type
+) {
+
+    const n=
+        parseFloat(
+            material.value
+        );
+
+
+    /*
+       기본적인 렌즈메이커 관계를
+       시각화에 사용.
+
+       양면 렌즈의 경우
+       R1 = +R
+       R2 = -R
+
+       오목렌즈는 부호가 반대.
+
+       중심 두께가 증가하면
+       두 굴절면 사이의 위치가
+       변하므로 실제 광선 추적도
+       달라진다.
+    */
+
+
+    const R=300;
+
+
+    let power;
+
+
+    if(
+        type==="convexLens"
+    ) {
+
+        power=
+            (n-1)*
+            (2/R);
+
+    }
+    else {
+
+        power=
+            -(n-1)*
+            (2/R);
+
+    }
+
+
+    if(
+        Math.abs(power)<1e-8
+    ) {
+
+        return 1000;
+
+    }
+
+
+    return 1/power;
+
+}
+
+
+/* =========================================================
+   렌즈 표면
+========================================================= */
 
 function lensSurfaces(type) {
 
-    const x=objectX();
+    const x=
+        objectX();
+
 
     const T=
-        parseFloat(thickness.value);
+        parseFloat(
+            thickness.value
+        );
 
-    const R=300;
+
+    /*
+       표면의 꼭짓점
+
+       중심 두께가 증가하면
+       두 표면의 위치가 멀어진다.
+    */
 
     const leftVertex=
         x-T/2;
@@ -1248,46 +1793,49 @@ function lensSurfaces(type) {
         x+T/2;
 
 
-    let leftCenter;
-    let rightCenter;
+    /*
+       곡률반지름
+
+       화면에서 교과서적인
+       형태가 잘 보이도록 설정
+    */
+
+    const R=300;
 
 
-    if(type==="convexLens") {
+    if(
+        type==="convexLens"
+    ) {
 
-        /*
-           양면 볼록렌즈
+        return {
 
-           왼쪽 면:
-           중심이 오른쪽
+            left:{
 
-           오른쪽 면:
-           중심이 왼쪽
-        */
+                vertex:leftVertex,
 
-        leftCenter=
-            leftVertex+R;
+                center:{
+                    x:leftVertex+R,
+                    y:axisY
+                },
 
-        rightCenter=
-            rightVertex-R;
+                R:R
 
-    }
-    else {
+            },
 
-        /*
-           양면 오목렌즈
+            right:{
 
-           왼쪽 면:
-           중심이 왼쪽
+                vertex:rightVertex,
 
-           오른쪽 면:
-           중심이 오른쪽
-        */
+                center:{
+                    x:rightVertex-R,
+                    y:axisY
+                },
 
-        leftCenter=
-            leftVertex-R;
+                R:R
 
-        rightCenter=
-            rightVertex+R;
+            }
+
+        };
 
     }
 
@@ -1295,19 +1843,29 @@ function lensSurfaces(type) {
     return {
 
         left:{
+
+            vertex:leftVertex,
+
             center:{
-                x:leftCenter,
+                x:leftVertex-R,
                 y:axisY
             },
+
             R:R
+
         },
 
         right:{
+
+            vertex:rightVertex,
+
             center:{
-                x:rightCenter,
+                x:rightVertex+R,
                 y:axisY
             },
+
             R:R
+
         }
 
     };
@@ -1315,154 +1873,64 @@ function lensSurfaces(type) {
 }
 
 
-/* =====================================================
+/* =========================================================
    렌즈 그리기
-===================================================== */
+========================================================= */
 
 function drawLens(type) {
 
-    const surfaces=
-        lensSurfaces(type);
-
-    const left=
-        surfaces.left;
-
-    const right=
-        surfaces.right;
+    const s=
+        lensSurfaces(
+            type
+        );
 
 
-    const aperture=210;
+    const aperture=220;
 
-
-    /*
-       렌즈 외곽선
-    */
 
     ctx.beginPath();
 
 
     /*
-       왼쪽 표면
+       왼쪽 면
     */
-
-    let leftStart=
-        Math.asin(
-            -aperture/left.R
-        );
-
-    let leftEnd=
-        Math.asin(
-            aperture/left.R
-        );
-
-
-    /*
-       실제로는 중심각을 이용해
-       위아래가 자연스럽게 연결되도록 그림
-    */
-
-
-    const steps=80;
-
-    let first=true;
-
 
     for(
         let i=0;
-        i<=steps;
+        i<=100;
         i++
     ) {
 
         const y=
             -aperture+
-            (2*aperture*i/steps);
-
-
-        const yy=
-            y;
+            2*aperture*i/100;
 
 
         const inside=
             Math.max(
                 0,
-                left.R*left.R-yy*yy
+                s.left.R*
+                s.left.R-
+                y*y
             );
 
 
-        let sx;
+        let x;
 
 
-        if(type==="convexLens") {
+        if(
+            type==="convexLens"
+        ) {
 
-            sx=
-                left.center.x-
+            x=
+                s.left.center.x-
                 Math.sqrt(inside);
 
         }
         else {
 
-            sx=
-                left.center.x+
-                Math.sqrt(inside);
-
-        }
-
-
-        const py=
-            axisY+yy;
-
-
-        if(first) {
-
-            ctx.moveTo(sx,py);
-            first=false;
-
-        }
-        else {
-
-            ctx.lineTo(sx,py);
-
-        }
-
-    }
-
-
-    /*
-       오른쪽 표면을 아래에서 위로
-    */
-
-    for(
-        let i=steps;
-        i>=0;
-        i--
-    ) {
-
-        const y=
-            -aperture+
-            (2*aperture*i/steps);
-
-
-        const inside=
-            Math.max(
-                0,
-                right.R*right.R-y*y
-            );
-
-
-        let sx;
-
-
-        if(type==="convexLens") {
-
-            sx=
-                right.center.x+
-                Math.sqrt(inside);
-
-        }
-        else {
-
-            sx=
-                right.center.x-
+            x=
+                s.left.center.x+
                 Math.sqrt(inside);
 
         }
@@ -1471,7 +1939,80 @@ function drawLens(type) {
         const py=
             axisY+y;
 
-        ctx.lineTo(sx,py);
+
+        if(i===0) {
+
+            ctx.moveTo(
+                x,
+                py
+            );
+
+        }
+        else {
+
+            ctx.lineTo(
+                x,
+                py
+            );
+
+        }
+
+    }
+
+
+    /*
+       오른쪽 면
+    */
+
+    for(
+        let i=100;
+        i>=0;
+        i--
+    ) {
+
+        const y=
+            -aperture+
+            2*aperture*i/100;
+
+
+        const inside=
+            Math.max(
+                0,
+                s.right.R*
+                s.right.R-
+                y*y
+            );
+
+
+        let x;
+
+
+        if(
+            type==="convexLens"
+        ) {
+
+            x=
+                s.right.center.x+
+                Math.sqrt(inside);
+
+        }
+        else {
+
+            x=
+                s.right.center.x-
+                Math.sqrt(inside);
+
+        }
+
+
+        const py=
+            axisY+y;
+
+
+        ctx.lineTo(
+            x,
+            py
+        );
 
     }
 
@@ -1480,22 +2021,25 @@ function drawLens(type) {
 
 
     ctx.fillStyle=
-        "rgba(80,170,255,0.25)";
+        "rgba(70,160,255,0.22)";
 
     ctx.fill();
 
-    ctx.strokeStyle="#1976d2";
+
+    ctx.strokeStyle="#1565c0";
+
     ctx.lineWidth=4;
 
     ctx.stroke();
 
 
-    text(
+    drawText(
         type==="convexLens"
         ? "볼록렌즈"
         : "오목렌즈",
+
         objectX()-45,
-        70,
+        65,
         18
     );
 
@@ -1503,59 +2047,45 @@ function drawLens(type) {
     /*
        초점 표시
 
-       얇은 렌즈 근사에서
-       1/f = (n-1)(1/R1 - 1/R2)
-
-       여기서는 실제 광선 추적과
-       시각적 초점 표시를 위해
-       곡률을 기준으로 표시
+       굴절률에 따라
+       초점 위치를 변경
     */
 
-    const n=
-        parseFloat(material.value);
-
-    const R=300;
-
-    let f;
-
-    if(type==="convexLens") {
-
-        f=
-            R/(2*(n-1));
-
-    }
-    else {
-
-        f=
-            -R/(2*(n-1));
-
-    }
-
-
-    /*
-       화면 크기에 맞게 제한
-    */
-
-    const displayF=
-        Math.max(
-            80,
-            Math.min(
-                300,
-                Math.abs(f)
+    let f=
+        Math.abs(
+            lensFocalLength(
+                type
             )
         );
 
 
-    if(type==="convexLens") {
+    /*
+       화면 안에서 보기 좋게
+       스케일 조정
+    */
+
+    f=
+        Math.max(
+            120,
+            Math.min(
+                330,
+                f
+            )
+        );
+
+
+    if(
+        type==="convexLens"
+    ) {
 
         drawFocus(
-            objectX()+displayF,
+            objectX()+f,
             axisY,
             "F"
         );
 
         drawFocus(
-            objectX()-displayF,
+            objectX()-f,
             axisY,
             "F"
         );
@@ -1564,7 +2094,7 @@ function drawLens(type) {
     else {
 
         drawFocus(
-            objectX()-displayF,
+            objectX()-f,
             axisY,
             "F"
         );
@@ -1574,48 +2104,22 @@ function drawLens(type) {
 }
 
 
-/* =====================================================
-   초점
-===================================================== */
-
-function drawFocus(x,y,label) {
-
-    ctx.beginPath();
-
-    ctx.arc(
-        x,
-        y,
-        6,
-        0,
-        Math.PI*2
-    );
-
-    ctx.fillStyle="#1976d2";
-
-    ctx.fill();
-
-    text(
-        label,
-        x+9,
-        y-9,
-        17,
-        "#1976d2"
-    );
-
-}
-
-
-/* =====================================================
-   렌즈 광선 추적
-===================================================== */
+/* =========================================================
+   렌즈 광선
+========================================================= */
 
 function traceLens(type) {
 
-    const surfaces=
-        lensSurfaces(type);
+    const s=
+        lensSurfaces(
+            type
+        );
+
 
     const n=
-        parseFloat(material.value);
+        parseFloat(
+            material.value
+        );
 
 
     let p={
@@ -1625,8 +2129,13 @@ function traceLens(type) {
 
 
     let d={
-        x:Math.cos(laser.angle),
-        y:Math.sin(laser.angle)
+        x:Math.cos(
+            laser.angle
+        ),
+
+        y:Math.sin(
+            laser.angle
+        )
     };
 
 
@@ -1635,21 +2144,24 @@ function traceLens(type) {
     */
 
     const first=
-        rayCircleIntersection(
+        rayCircle(
             p,
             d,
-            surfaces.left.center,
-            surfaces.left.R
+            s.left.center,
+            s.left.R
         );
 
 
     if(!first) {
 
-        line(
+        drawLine(
             p,
-            add(p,mul(d,1000)),
-            "#ff2020",
-            4
+            add(
+                p,
+                mul(d,1000)
+            ),
+            "#e53935",
+            5
         );
 
         return;
@@ -1657,21 +2169,20 @@ function traceLens(type) {
     }
 
 
-    /*
-       실제 렌즈 높이 범위
-    */
-
     if(
         Math.abs(
             first.point.y-axisY
-        )>210
+        )>220
     ) {
 
-        line(
+        drawLine(
             p,
-            add(p,mul(d,1000)),
-            "#ff2020",
-            4
+            add(
+                p,
+                mul(d,1000)
+            ),
+            "#e53935",
+            5
         );
 
         return;
@@ -1683,23 +2194,23 @@ function traceLens(type) {
        입사광
     */
 
-    line(
+    drawLine(
         p,
         first.point,
-        "#ff2020",
-        4
+        "#e53935",
+        5
     );
 
 
     /*
-       첫 번째 면의 법선
+       첫 번째 면 법선
     */
 
-    let N1=
-        norm(
+    const N1=
+        normalize(
             sub(
                 first.point,
-                surfaces.left.center
+                s.left.center
             )
         );
 
@@ -1708,7 +2219,7 @@ function traceLens(type) {
        공기 → 렌즈
     */
 
-    let dInside=
+    let inside=
         refract(
             d,
             N1,
@@ -1717,23 +2228,26 @@ function traceLens(type) {
         );
 
 
-    /*
-       전반사가 일어나는 경우
-    */
+    if(!inside) {
 
-    if(!dInside) {
+        inside=
+            reflect(
+                d,
+                N1
+            );
 
-        const reflected=
-            reflect(d,N1);
 
-        line(
+        drawLine(
             first.point,
             add(
                 first.point,
-                mul(reflected,600)
+                mul(
+                    inside,
+                    600
+                )
             ),
-            "#ff2020",
-            4
+            "#e53935",
+            5
         );
 
         return;
@@ -1742,28 +2256,31 @@ function traceLens(type) {
 
 
     /*
-       렌즈 내부에서 두 번째 면 찾기
+       렌즈 내부
     */
 
     const second=
-        rayCircleIntersection(
+        rayCircle(
             first.point,
-            dInside,
-            surfaces.right.center,
-            surfaces.right.R
+            inside,
+            s.right.center,
+            s.right.R
         );
 
 
     if(!second) {
 
-        line(
+        drawLine(
             first.point,
             add(
                 first.point,
-                mul(dInside,600)
+                mul(
+                    inside,
+                    600
+                )
             ),
-            "#ff2020",
-            4
+            "#e53935",
+            5
         );
 
         return;
@@ -1771,15 +2288,11 @@ function traceLens(type) {
     }
 
 
-    /*
-       렌즈 내부 광선
-    */
-
-    line(
+    drawLine(
         first.point,
         second.point,
-        "#ff2020",
-        4
+        "#e53935",
+        5
     );
 
 
@@ -1787,11 +2300,11 @@ function traceLens(type) {
        두 번째 면 법선
     */
 
-    let N2=
-        norm(
+    const N2=
+        normalize(
             sub(
                 second.point,
-                surfaces.right.center
+                s.right.center
             )
         );
 
@@ -1800,24 +2313,20 @@ function traceLens(type) {
        렌즈 → 공기
     */
 
-    let dOut=
+    let out=
         refract(
-            dInside,
+            inside,
             N2,
             n,
             1.0
         );
 
 
-    /*
-       전반사
-    */
+    if(!out) {
 
-    if(!dOut) {
-
-        dOut=
+        out=
             reflect(
-                dInside,
+                inside,
                 N2
             );
 
@@ -1828,28 +2337,118 @@ function traceLens(type) {
        최종 굴절광
     */
 
-    line(
+    drawLine(
         second.point,
+
         add(
             second.point,
-            mul(dOut,700)
+            mul(
+                out,
+                800
+            )
         ),
-        "#ff2020",
-        4
+
+        "#e53935",
+        6
     );
+
+
+    /*
+       오목렌즈의 허초점
+
+       굴절된 광선을 반대 방향으로
+       연장하여 표시
+    */
+
+    if(
+        type==="concaveLens"
+    ) {
+
+        drawLine(
+            second.point,
+
+            add(
+                second.point,
+                mul(
+                    out,
+                    -600
+                )
+            ),
+
+            "#777",
+            2,
+            true
+        );
+
+
+        drawText(
+            "허초점 F",
+            objectX()-170,
+            axisY-20,
+            16,
+            "#777"
+        );
+
+    }
+
+
+    /*
+       볼록렌즈
+
+       레이저가 광축과 평행하게
+       들어오는 경우 초점으로
+       향하도록 시각적으로 강조
+    */
+
+    if(
+        type==="convexLens" &&
+        Math.abs(
+            laser.angle
+        )<0.03
+    ) {
+
+        const f=
+            Math.max(
+                120,
+                Math.min(
+                    330,
+                    Math.abs(
+                        lensFocalLength(
+                            type
+                        )
+                    )
+                )
+            );
+
+
+        /*
+           실제 계산된 굴절광선과
+           초점 위치를 연결하는
+           보조 표시
+        */
+
+        drawFocus(
+            objectX()+f,
+            axisY,
+            "F"
+        );
+
+    }
 
 }
 
 
-/* =====================================================
-   프리즘 꼭짓점
-===================================================== */
+/* =========================================================
+   프리즘
+========================================================= */
 
 function prismVertices() {
 
-    const x=objectX();
+    const x=
+        objectX();
 
-    const angle=
+
+    const A=
         parseFloat(
             prismAngle.value
         )*
@@ -1858,9 +2457,15 @@ function prismVertices() {
 
     const base=300;
 
+
     const height=
         base/
-        (2*Math.tan(angle/2));
+        (
+            2*
+            Math.tan(
+                A/2
+            )
+        );
 
 
     return [
@@ -1885,9 +2490,9 @@ function prismVertices() {
 }
 
 
-/* =====================================================
+/* =========================================================
    프리즘 그리기
-===================================================== */
+========================================================= */
 
 function drawPrism() {
 
@@ -1897,39 +2502,50 @@ function drawPrism() {
 
     ctx.beginPath();
 
-    ctx.moveTo(v[0].x,v[0].y);
+    ctx.moveTo(
+        v[0].x,
+        v[0].y
+    );
 
-    ctx.lineTo(v[1].x,v[1].y);
+    ctx.lineTo(
+        v[1].x,
+        v[1].y
+    );
 
-    ctx.lineTo(v[2].x,v[2].y);
+    ctx.lineTo(
+        v[2].x,
+        v[2].y
+    );
 
     ctx.closePath();
 
 
     ctx.fillStyle=
-        "rgba(80,170,255,0.25)";
+        "rgba(70,160,255,0.25)";
 
     ctx.fill();
 
-    ctx.strokeStyle="#1976d2";
+
+    ctx.strokeStyle="#1565c0";
+
     ctx.lineWidth=4;
 
     ctx.stroke();
 
 
-    text(
+    drawText(
         "프리즘",
         objectX()-25,
-        v[2].y+40,
+        v[2].y+38,
         18
     );
 
 }
 
 
-/* =====================================================
+/* =========================================================
    프리즘 광선
-===================================================== */
+========================================================= */
 
 function tracePrism() {
 
@@ -1950,27 +2566,42 @@ function tracePrism() {
 
 
     let d={
-        x:Math.cos(laser.angle),
-        y:Math.sin(laser.angle)
+        x:Math.cos(
+            laser.angle
+        ),
+
+        y:Math.sin(
+            laser.angle
+        )
     };
 
 
     const edges=[
 
-        [vertices[0],vertices[1]],
+        [
+            vertices[0],
+            vertices[1]
+        ],
 
-        [vertices[1],vertices[2]],
+        [
+            vertices[1],
+            vertices[2]
+        ],
 
-        [vertices[2],vertices[0]]
+        [
+            vertices[2],
+            vertices[0]
+        ]
 
     ];
 
 
     /*
-       첫 번째 면
+       첫 번째 면 찾기
     */
 
-    let firstHit=null;
+    let first=null;
+
     let firstIndex=-1;
 
 
@@ -1981,7 +2612,7 @@ function tracePrism() {
     ) {
 
         const hit=
-            raySegmentIntersection(
+            raySegment(
                 p,
                 d,
                 edges[i][0],
@@ -1992,12 +2623,13 @@ function tracePrism() {
         if(
             hit &&
             (
-                firstHit===null ||
-                hit.t<firstHit.t
+                first===null ||
+                hit.t<first.t
             )
         ) {
 
-            firstHit=hit;
+            first=hit;
+
             firstIndex=i;
 
         }
@@ -2005,18 +2637,16 @@ function tracePrism() {
     }
 
 
-    /*
-       프리즘에 닿지 않으면
-       그냥 직진
-    */
+    if(!first) {
 
-    if(!firstHit) {
-
-        line(
+        drawLine(
             p,
-            add(p,mul(d,1000)),
-            "#ff2020",
-            4
+            add(
+                p,
+                mul(d,1000)
+            ),
+            "#e53935",
+            5
         );
 
         return;
@@ -2025,14 +2655,14 @@ function tracePrism() {
 
 
     /*
-       첫 번째 면까지
+       입사광
     */
 
-    line(
+    drawLine(
         p,
-        firstHit.point,
-        "#ff2020",
-        4
+        first.point,
+        "#e53935",
+        5
     );
 
 
@@ -2048,17 +2678,17 @@ function tracePrism() {
 
 
     let N1=
-        norm({
+        normalize({
             x:-edge1.y,
             y:edge1.x
         });
 
 
     /*
-       공기 → 유리
+       공기 → 프리즘
     */
 
-    let dInside=
+    let inside=
         refract(
             d,
             N1,
@@ -2067,26 +2697,26 @@ function tracePrism() {
         );
 
 
-    /*
-       전반사
-    */
+    if(!inside) {
 
-    if(!dInside) {
-
-        dInside=
+        inside=
             reflect(
                 d,
                 N1
             );
 
-        line(
-            firstHit.point,
+
+        drawLine(
+            first.point,
             add(
-                firstHit.point,
-                mul(dInside,600)
+                first.point,
+                mul(
+                    inside,
+                    600
+                )
             ),
-            "#ff2020",
-            4
+            "#e53935",
+            5
         );
 
         return;
@@ -2096,11 +2726,10 @@ function tracePrism() {
 
     /*
        두 번째 면 찾기
-
-       첫 번째 면은 제외
     */
 
-    let secondHit=null;
+    let second=null;
+
     let secondIndex=-1;
 
 
@@ -2110,15 +2739,19 @@ function tracePrism() {
         i++
     ) {
 
-        if(i===firstIndex) {
+        if(
+            i===firstIndex
+        ) {
+
             continue;
+
         }
 
 
         const hit=
-            raySegmentIntersection(
-                firstHit.point,
-                dInside,
+            raySegment(
+                first.point,
+                inside,
                 edges[i][0],
                 edges[i][1]
             );
@@ -2127,12 +2760,13 @@ function tracePrism() {
         if(
             hit &&
             (
-                secondHit===null ||
-                hit.t<secondHit.t
+                second===null ||
+                hit.t<second.t
             )
         ) {
 
-            secondHit=hit;
+            second=hit;
+
             secondIndex=i;
 
         }
@@ -2140,110 +2774,109 @@ function tracePrism() {
     }
 
 
+    if(!second) {
+
+        drawLine(
+            first.point,
+            add(
+                first.point,
+                mul(
+                    inside,
+                    600
+                )
+            ),
+            "#e53935",
+            5
+        );
+
+        return;
+
+    }
+
+
     /*
-       프리즘 내부에서 두 번째 면까지
+       프리즘 내부
     */
 
-    if(secondHit) {
+    drawLine(
+        first.point,
+        second.point,
+        "#e53935",
+        5
+    );
 
-        line(
-            firstHit.point,
-            secondHit.point,
-            "#ff2020",
-            4
+
+    /*
+       두 번째 면 법선
+    */
+
+    const edge2=
+        sub(
+            edges[secondIndex][1],
+            edges[secondIndex][0]
         );
 
 
-        /*
-           두 번째 면 법선
-        */
+    let N2=
+        normalize({
+            x:-edge2.y,
+            y:edge2.x
+        });
 
-        const edge2=
-            sub(
-                edges[secondIndex][1],
-                edges[secondIndex][0]
+
+    /*
+       프리즘 → 공기
+    */
+
+    let out=
+        refract(
+            inside,
+            N2,
+            n,
+            1.0
+        );
+
+
+    if(!out) {
+
+        out=
+            reflect(
+                inside,
+                N2
             );
 
-
-        let N2=
-            norm({
-                x:-edge2.y,
-                y:edge2.x
-            });
-
-
-        /*
-           프리즘 → 공기
-        */
-
-        let dOut=
-            refract(
-                dInside,
-                N2,
-                n,
-                1.0
-            );
-
-
-        /*
-           전반사
-        */
-
-        if(!dOut) {
-
-            dOut=
-                reflect(
-                    dInside,
-                    N2
-                );
-
-        }
-
-
-        /*
-           최종 광선
-
-           중요:
-           여기에서만 최종 광선을 그린다.
-           따라서 프리즘에서
-           광선이 두 개 생기는 문제가 없다.
-        */
-
-        line(
-            secondHit.point,
-            add(
-                secondHit.point,
-                mul(dOut,700)
-            ),
-            "#ff2020",
-            4
-        );
-
     }
-    else {
 
-        /*
-           프리즘 내부에서 계속 진행
-        */
 
-        line(
-            firstHit.point,
-            add(
-                firstHit.point,
-                mul(dInside,700)
-            ),
-            "#ff2020",
-            4
-        );
+    /*
+       최종 굴절광
 
-    }
+       이 부분에서 한 번만 그린다.
+       따라서 프리즘에서 광선이
+       두 개 생기는 문제가 없다.
+    */
+
+    drawLine(
+        second.point,
+
+        add(
+            second.point,
+            mul(
+                out,
+                800
+            )
+        ),
+
+        "#e53935",
+        6
+    );
 
 }
 
 
-/* =====================================================
-   전체 그리기
-===================================================== */
+/* =========================================================
+   전체 화면
+========================================================= */
 
 function draw() {
 
@@ -2276,7 +2909,9 @@ function draw() {
        광학 기구
     */
 
-    if(type==="planeMirror") {
+    if(
+        type==="planeMirror"
+    ) {
 
         drawPlaneMirror();
 
@@ -2287,7 +2922,9 @@ function draw() {
         type==="convexMirror"
     ) {
 
-        drawCurvedMirror(type);
+        drawCurvedMirror(
+            type
+        );
 
     }
 
@@ -2296,11 +2933,15 @@ function draw() {
         type==="concaveLens"
     ) {
 
-        drawLens(type);
+        drawLens(
+            type
+        );
 
     }
 
-    else if(type==="prism") {
+    else if(
+        type==="prism"
+    ) {
 
         drawPrism();
 
@@ -2311,7 +2952,9 @@ function draw() {
        광선
     */
 
-    if(type==="planeMirror") {
+    if(
+        type==="planeMirror"
+    ) {
 
         tracePlaneMirror();
 
@@ -2322,7 +2965,9 @@ function draw() {
         type==="convexMirror"
     ) {
 
-        traceCurvedMirror(type);
+        traceCurvedMirror(
+            type
+        );
 
     }
 
@@ -2331,11 +2976,15 @@ function draw() {
         type==="concaveLens"
     ) {
 
-        traceLens(type);
+        traceLens(
+            type
+        );
 
     }
 
-    else if(type==="prism") {
+    else if(
+        type==="prism"
+    ) {
 
         tracePrism();
 
@@ -2343,21 +2992,22 @@ function draw() {
 
 
     /*
-       마지막에 레이저를 그린다.
-
-       광선 자체는 위에서 한 번만 계산하므로
-       프리즘에서 두 개가 나오는 문제가 없다.
+       레이저 본체는
+       광선 위에 표시
     */
 
     drawLaser();
 
 
     /*
-       정보 표시
+       정보
     */
 
     const deg=
-        laser.angle*180/Math.PI;
+        laser.angle*
+        180/
+        Math.PI;
+
 
     document.getElementById(
         "angleInfo"
@@ -2384,9 +3034,9 @@ function draw() {
 }
 
 
-/* =====================================================
-   물리 정보
-===================================================== */
+/* =========================================================
+   물리 설명
+========================================================= */
 
 function updatePhysicsInfo() {
 
@@ -2394,57 +3044,93 @@ function updatePhysicsInfo() {
         objectType.value;
 
 
-    const n=
-        parseFloat(material.value);
-
-
-    let message="";
+    let text="";
 
 
     if(
-        type==="convexLens" ||
+        type==="convexLens"
+    ) {
+
+        const n=
+            parseFloat(
+                material.value
+            );
+
+
+        text=
+        "볼록렌즈에서는 평행하게 들어온 빛이 "
+        +"굴절되어 초점 F를 향합니다. "
+        +"현재 굴절률 n = "
+        +n.toFixed(2)
+        +"입니다.";
+
+    }
+
+
+    else if(
         type==="concaveLens"
     ) {
 
-        message=
-        "렌즈 재질의 굴절률 n = "
-        +n.toFixed(2)
-        +"이며, 중심 두께는 "
-        +thickness.value
-        +"입니다. "
-        +"두께 변화는 굴절률 자체를 바꾸지 않고 "
-        +"두 굴절면의 위치와 렌즈의 형상을 바꿉니다.";
+        text=
+        "오목렌즈에서는 빛이 퍼져 나가며, "
+        +"굴절된 광선을 뒤쪽으로 연장하면 "
+        +"허초점 F에서 나온 것처럼 보입니다.";
 
     }
 
-    else if(type==="planeMirror") {
-
-        message=
-        "평면거울에서는 입사각과 반사각이 같도록 "
-        +"반사 법칙을 적용했습니다.";
-
-    }
 
     else if(
-        type==="concaveMirror" ||
+        type==="planeMirror"
+    ) {
+
+        text=
+        "평면거울에서는 입사각과 반사각이 같으며, "
+        +"반사광선을 거울 뒤쪽으로 연장하면 "
+        +"가상적인 광선 경로를 확인할 수 있습니다.";
+
+    }
+
+
+    else if(
+        type==="concaveMirror"
+    ) {
+
+        text=
+        "오목거울에서는 반사면의 법선을 기준으로 "
+        +"반사 법칙을 적용합니다. "
+        +"광축과 평행한 광선은 초점 방향으로 반사됩니다.";
+
+    }
+
+
+    else if(
         type==="convexMirror"
     ) {
 
-        message=
-        "곡면거울에서는 광선과 원형 곡면의 교점을 계산한 뒤 "
-        +"그 지점의 법선을 구하고 반사의 법칙을 적용합니다. "
-        +"곡률반지름 = "
-        +radius.value;
+        text=
+        "볼록거울에서는 반사된 광선이 퍼져 나가며, "
+        +"반사광선을 뒤쪽으로 연장하면 "
+        +"허초점 방향에서 나온 것처럼 보입니다.";
 
     }
 
-    else if(type==="prism") {
 
-        message=
-        "프리즘의 굴절률 n = "
-        +parseFloat(prismIndex.value).toFixed(2)
-        +"이며, 빛이 첫 번째 면과 두 번째 면에서 각각 "
-        +"스넬의 법칙에 따라 굴절합니다.";
+    else if(
+        type==="prism"
+    ) {
+
+        const n=
+            parseFloat(
+                prismIndex.value
+            );
+
+
+        text=
+        "프리즘에서는 첫 번째 면에서 굴절되고 "
+        +"프리즘 내부를 진행한 뒤 두 번째 면에서 "
+        +"다시 굴절됩니다. 현재 굴절률 n = "
+        +n.toFixed(2)
+        +"입니다.";
 
     }
 
@@ -2452,45 +3138,121 @@ function updatePhysicsInfo() {
     document.getElementById(
         "physicsInfo"
     ).textContent=
-        message;
+        text;
+
+
+    /*
+       광선 작도 설명
+    */
+
+    let imageText="";
+
+
+    if(
+        type==="convexLens"
+    ) {
+
+        imageText=
+            "평행광선 → 초점 F 방향으로 굴절";
+
+    }
+
+    else if(
+        type==="concaveLens"
+    ) {
+
+        imageText=
+            "실제 굴절광선은 퍼짐 → 점선 연장선에서 허초점 확인";
+
+    }
+
+    else if(
+        type==="planeMirror"
+    ) {
+
+        imageText=
+            "반사광선은 실제 광선, 거울 뒤 점선은 가상적인 연장";
+
+    }
+
+    else if(
+        type==="convexMirror"
+    ) {
+
+        imageText=
+            "반사광선의 점선 연장선으로 허초점 확인";
+
+    }
+
+    else if(
+        type==="concaveMirror"
+    ) {
+
+        imageText=
+            "반사광선이 초점 방향으로 진행";
+
+    }
+
+    else {
+
+        imageText=
+            "두 굴절면에서 연속적으로 굴절";
+
+    }
+
+
+    document.getElementById(
+        "imageInfo"
+    ).textContent=
+        imageText;
 
 }
 
 
-/* =====================================================
+/* =========================================================
    마우스 좌표
-===================================================== */
+========================================================= */
 
 function mousePosition(event) {
 
     const rect=
         canvas.getBoundingClientRect();
 
+
     return {
 
         x:
-        (event.clientX-rect.left)
-        *W/rect.width,
+            (event.clientX-
+             rect.left)
+            *
+            W/
+            rect.width,
 
         y:
-        (event.clientY-rect.top)
-        *H/rect.height
+            (event.clientY-
+             rect.top)
+            *
+            H/
+            rect.height
 
     };
 
 }
 
 
-/* =====================================================
-   손잡이 드래그 시작
-===================================================== */
+/* =========================================================
+   레이저 손잡이 드래그
+========================================================= */
 
 canvas.addEventListener(
     "mousedown",
     function(event) {
 
         const p=
-            mousePosition(event);
+            mousePosition(
+                event
+            );
+
 
         const h=
             handlePosition();
@@ -2498,12 +3260,17 @@ canvas.addEventListener(
 
         const distance=
             Math.sqrt(
-                (p.x-h.x)*(p.x-h.x)+
-                (p.y-h.y)*(p.y-h.y)
+                (p.x-h.x)*
+                (p.x-h.x)+
+
+                (p.y-h.y)*
+                (p.y-h.y)
             );
 
 
-        if(distance<35) {
+        if(
+            distance<40
+        ) {
 
             dragging=true;
 
@@ -2516,16 +3283,15 @@ canvas.addEventListener(
 );
 
 
-/* =====================================================
-   손잡이 드래그
-===================================================== */
-
 canvas.addEventListener(
     "mousemove",
     function(event) {
 
         const p=
-            mousePosition(event);
+            mousePosition(
+                event
+            );
+
 
         const h=
             handlePosition();
@@ -2535,23 +3301,19 @@ canvas.addEventListener(
 
             const distance=
                 Math.sqrt(
-                    (p.x-h.x)*(p.x-h.x)+
-                    (p.y-h.y)*(p.y-h.y)
+                    (p.x-h.x)*
+                    (p.x-h.x)+
+
+                    (p.y-h.y)*
+                    (p.y-h.y)
                 );
 
 
-            if(distance<35) {
+            canvas.style.cursor=
+                distance<40
+                ? "grab"
+                : "default";
 
-                canvas.style.cursor=
-                    "grab";
-
-            }
-            else {
-
-                canvas.style.cursor=
-                    "default";
-
-            }
 
             return;
 
@@ -2560,7 +3322,8 @@ canvas.addEventListener(
 
         /*
            레이저 중심에서
-           마우스 방향으로 각도 계산
+           마우스 위치를 향하는
+           각도
         */
 
         laser.angle=
@@ -2576,10 +3339,6 @@ canvas.addEventListener(
 );
 
 
-/* =====================================================
-   드래그 종료
-===================================================== */
-
 window.addEventListener(
     "mouseup",
     function() {
@@ -2593,9 +3352,9 @@ window.addEventListener(
 );
 
 
-/* =====================================================
-   터치 화면 지원
-===================================================== */
+/* =========================================================
+   터치
+========================================================= */
 
 canvas.addEventListener(
     "touchstart",
@@ -2604,18 +3363,26 @@ canvas.addEventListener(
         const touch=
             event.touches[0];
 
+
         const rect=
             canvas.getBoundingClientRect();
+
 
         const p={
 
             x:
-            (touch.clientX-rect.left)
-            *W/rect.width,
+                (touch.clientX-
+                 rect.left)
+                *
+                W/
+                rect.width,
 
             y:
-            (touch.clientY-rect.top)
-            *H/rect.height
+                (touch.clientY-
+                 rect.top)
+                *
+                H/
+                rect.height
 
         };
 
@@ -2626,12 +3393,17 @@ canvas.addEventListener(
 
         const distance=
             Math.sqrt(
-                (p.x-h.x)*(p.x-h.x)+
-                (p.y-h.y)*(p.y-h.y)
+                (p.x-h.x)*
+                (p.x-h.x)+
+
+                (p.y-h.y)*
+                (p.y-h.y)
             );
 
 
-        if(distance<45) {
+        if(
+            distance<50
+        ) {
 
             dragging=true;
 
@@ -2646,26 +3418,38 @@ canvas.addEventListener(
     function(event) {
 
         if(!dragging) {
+
             return;
+
         }
 
+
         event.preventDefault();
+
 
         const touch=
             event.touches[0];
 
+
         const rect=
             canvas.getBoundingClientRect();
+
 
         const p={
 
             x:
-            (touch.clientX-rect.left)
-            *W/rect.width,
+                (touch.clientX-
+                 rect.left)
+                *
+                W/
+                rect.width,
 
             y:
-            (touch.clientY-rect.top)
-            *H/rect.height
+                (touch.clientY-
+                 rect.top)
+                *
+                H/
+                rect.height
 
         };
 
@@ -2680,7 +3464,10 @@ canvas.addEventListener(
         draw();
 
     },
-    {passive:false}
+
+    {
+        passive:false
+    }
 );
 
 
@@ -2694,39 +3481,45 @@ canvas.addEventListener(
 );
 
 
-/* =====================================================
+/* =========================================================
    컨트롤 변경
-===================================================== */
+========================================================= */
 
 objectType.addEventListener(
     "change",
     updateControls
 );
 
+
 material.addEventListener(
     "input",
     draw
 );
+
 
 thickness.addEventListener(
     "input",
     draw
 );
 
+
 radius.addEventListener(
     "input",
     draw
 );
+
 
 prismAngle.addEventListener(
     "input",
     draw
 );
 
+
 position.addEventListener(
     "input",
     draw
 );
+
 
 prismIndex.addEventListener(
     "input",
@@ -2734,80 +3527,9 @@ prismIndex.addEventListener(
 );
 
 
-/* =====================================================
-   컨트롤 표시 업데이트
-===================================================== */
-
-function updateControls() {
-
-    const type=
-        objectType.value;
-
-
-    /*
-       렌즈
-    */
-
-    const isLens=
-        type==="convexLens" ||
-        type==="concaveLens";
-
-
-    /*
-       곡면거울
-    */
-
-    const isCurvedMirror=
-        type==="concaveMirror" ||
-        type==="convexMirror";
-
-
-    /*
-       프리즘
-    */
-
-    const isPrism=
-        type==="prism";
-
-
-    materialRow.style.display=
-        isLens
-        ? "grid"
-        : "none";
-
-
-    thicknessRow.style.display=
-        isLens
-        ? "grid"
-        : "none";
-
-
-    radiusRow.style.display=
-        isCurvedMirror
-        ? "grid"
-        : "none";
-
-
-    prismRow.style.display=
-        isPrism
-        ? "grid"
-        : "none";
-
-
-    prismMaterialRow.style.display=
-        isPrism
-        ? "grid"
-        : "none";
-
-
-    draw();
-
-}
-
-
-/* =====================================================
+/* =========================================================
    값 표시
-===================================================== */
+========================================================= */
 
 thickness.addEventListener(
     "input",
@@ -2816,7 +3538,7 @@ thickness.addEventListener(
         document.getElementById(
             "thicknessValue"
         ).textContent=
-            thickness.value+" px";
+            thickness.value;
 
     }
 );
@@ -2842,7 +3564,8 @@ prismAngle.addEventListener(
         document.getElementById(
             "prismAngleValue"
         ).textContent=
-            prismAngle.value+"°";
+            prismAngle.value+
+            "°";
 
     }
 );
@@ -2865,13 +3588,13 @@ material.addEventListener(
     "input",
     function() {
 
-        const n=
-            parseFloat(material.value);
-
         document.getElementById(
             "materialValue"
         ).textContent=
-            "n = "+n.toFixed(2);
+            "n = "+
+            parseFloat(
+                material.value
+            ).toFixed(2);
 
     }
 );
@@ -2892,20 +3615,81 @@ prismIndex.addEventListener(
 );
 
 
-/* =====================================================
-   초기 실행
-===================================================== */
+/* =========================================================
+   컨트롤 표시
+========================================================= */
+
+function updateControls() {
+
+    const type=
+        objectType.value;
+
+
+    const isLens=
+        type==="convexLens" ||
+        type==="concaveLens";
+
+
+    const isMirror=
+        type==="concaveMirror" ||
+        type==="convexMirror";
+
+
+    const isPrism=
+        type==="prism";
+
+
+    materialRow.style.display=
+        isLens
+        ? "grid"
+        : "none";
+
+
+    thicknessRow.style.display=
+        isLens
+        ? "grid"
+        : "none";
+
+
+    radiusRow.style.display=
+        isMirror
+        ? "grid"
+        : "none";
+
+
+    prismRow.style.display=
+        isPrism
+        ? "grid"
+        : "none";
+
+
+    prismMaterialRow.style.display=
+        isPrism
+        ? "grid"
+        : "none";
+
+
+    draw();
+
+}
+
+
+/* =========================================================
+   시작
+========================================================= */
 
 updateControls();
 
 </script>
 
 </body>
+
 </html>
 """
 
+
 components.html(
     html,
-    height=1050,
+    height=1100,
     scrolling=False
 )
