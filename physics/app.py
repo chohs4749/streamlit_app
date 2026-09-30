@@ -371,7 +371,7 @@ function refract(incident, normal, n1, n2) {
     return { ray: normalize({ x: rx, y: ry }), tir: false };
 }
 
-/* --- 광선 작도 및 물리 연산 (오직 경계면에서만 굴절/반사) --- */
+/* --- 엄격한 경계면 전용 물리 연산 --- */
 function traceRays() {
     const type = objectType.value;
     const ox = objectXPos;
@@ -388,39 +388,29 @@ function traceRays() {
     // 직진했을 때의 원래 경로 점선 (배경)
     drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
-    if (type === "convexLens" || type === "concaveLens") {
-        // 정확한 렌즈 입사면(첫 번째 경계) 좌표 계산
-        const frontX = type === "convexLens" ? (ox - th/2) : (ox - th*0.8);
-        const tFront = (frontX - p.x) / d.x;
-
-        if (tFront > 0) {
-            const hitIn = add(p, mul(d, tFront));
+    if (type === "convexLens") {
+        // 볼록렌즈 입사면(첫 번째 곡선 표면) 정확한 교차점 추정
+        const frontX = ox - th/2;
+        const t = (frontX - p.x) / d.x;
+        if (t > 0) {
+            const hitIn = add(p, mul(d, t));
             if (Math.abs(hitIn.y - axisY) <= hLimit) {
-                drawLine(p, hitIn, "#e53935", 4); // 1. 경계면 전까지 직진
+                drawLine(p, hitIn, "#e53935", 4); // 1. 입사면까지 직진
 
                 const yRatio = (hitIn.y - axisY) / hLimit;
-                // 입사면 경계에서의 정확한 법선 벡터
-                const normal1 = type === "convexLens" ? 
-                    normalize({ x: -1, y: -yRatio * 0.6 }) : 
-                    normalize({ x: 1, y: yRatio * 0.6 });
-                
+                const normal1 = normalize({ x: -1, y: -yRatio * 0.8 });
                 const ref1 = refract(d, normal1, 1.0, 1.5);
                 const internalRay = ref1.ray;
 
-                // 렌즈 출사면(두 번째 경계) 좌표 계산
-                const backX = type === "convexLens" ? (ox + th/2) : (ox + th*0.3);
+                // 볼록렌즈 출사면(두 번째 곡선 표면) 정확한 교차점 추정
+                const backX = ox + th/2;
                 const tBack = (backX - hitIn.x) / internalRay.x;
-
                 if (tBack > 0) {
                     const hitOut = add(hitIn, mul(internalRay, tBack));
                     drawLine(hitIn, hitOut, "#e53935", 4); // 2. 렌즈 내부 통과
 
                     const outYRatio = (hitOut.y - axisY) / hLimit;
-                    // 출사면 경계에서의 정확한 법선 벡터
-                    const normal2 = type === "convexLens" ? 
-                        normalize({ x: 1, y: outYRatio * 0.6 }) : 
-                        normalize({ x: -1, y: -outYRatio * 0.6 });
-
+                    const normal2 = normalize({ x: 1, y: outYRatio * 0.8 });
                     const ref2 = refract(internalRay, normal2, 1.5, 1.0);
                     const finalRay = ref2.ray;
 
@@ -430,7 +420,40 @@ function traceRays() {
             }
         }
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
-    } 
+    }
+    else if (type === "concaveLens") {
+        // 오목렌즈 입사면(첫 번째 경계)
+        const frontX = ox - th;
+        const t = (frontX - p.x) / d.x;
+        if (t > 0) {
+            const hitIn = add(p, mul(d, t));
+            if (Math.abs(hitIn.y - axisY) <= hLimit) {
+                drawLine(p, hitIn, "#e53935", 4); // 1. 입사면까지 직진
+
+                const yRatio = (hitIn.y - axisY) / hLimit;
+                const normal1 = normalize({ x: 1, y: yRatio * 0.8 });
+                const ref1 = refract(d, normal1, 1.0, 1.5);
+                const internalRay = ref1.ray;
+
+                // 오목렌즈 출사면(두 번째 경계)
+                const backX = ox;
+                const tBack = (backX - hitIn.x) / internalRay.x;
+                if (tBack > 0) {
+                    const hitOut = add(hitIn, mul(internalRay, tBack));
+                    drawLine(hitIn, hitOut, "#e53935", 4); // 2. 렌즈 내부 통과
+
+                    const outYRatio = (hitOut.y - axisY) / hLimit;
+                    const normal2 = normalize({ x: -1, y: -outYRatio * 0.8 });
+                    const ref2 = refract(internalRay, normal2, 1.5, 1.0);
+                    const finalRay = ref2.ray;
+
+                    drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4); // 3. 최종 출사
+                    return;
+                }
+            }
+        }
+        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+    }
     else if (type === "planeMirror") {
         const t = (ox - p.x) / d.x;
         const hitPoint = add(p, mul(d, t));
@@ -450,6 +473,7 @@ function traceRays() {
         const t = rayCircleIntersection(p, d, center, R);
         if (t !== null) {
             const actualHit = add(p, mul(d, t));
+            // 정확히 오목거울 표면에 닿을 때만 반사 (통과 불가)
             if (Math.abs(actualHit.y - axisY) <= hLimit && actualHit.x <= ox + 2 && actualHit.x >= ox - R) {
                 drawLine(p, actualHit, "#e53935", 4);
                 const normal = normalize(sub(center, actualHit));
@@ -467,6 +491,7 @@ function traceRays() {
         const t = rayCircleIntersection(p, d, center, R);
         if (t !== null) {
             const actualHit = add(p, mul(d, t));
+            // 정확히 볼록거울 표면에 닿을 때만 반사 (통과 불가)
             if (Math.abs(actualHit.y - axisY) <= hLimit && actualHit.x <= ox + 2 && actualHit.x >= ox - R) {
                 drawLine(p, actualHit, "#e53935", 4);
                 const normal = normalize(sub(actualHit, center));
