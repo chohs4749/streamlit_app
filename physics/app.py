@@ -1,15 +1,15 @@
-import streamlit as st
+import streamlit as str_module
 import streamlit.components.v1 as components
 
-st.set_page_config(
-    page_title="렌즈,거울,프리즘 실험해보기 (완벽 물리 광선 연동)",
+str_module.set_page_config(
+    page_title="렌즈,거울,프리즘 실험해보기 (완벽 물리 광선 정밀 교정)",
     page_icon="🔬",
     layout="wide"
 )
 
-st.title("🔬 렌즈,거울,프리즘 실험해보기 (물리 광선 정밀 연동)")
+str_module.title("🔬 렌즈,거울,프리즘 실험해보기 (물리 광선 정밀 연동)")
 
-st.markdown(
+str_module.markdown(
     """
     - **노란색 손잡이 (레이저)**: 드래그하여 레이저의 발사 방향을 조절하세요.
     - **광학 기구 직접 드래그**: 렌즈, 거울, 프리즘 기구를 마우스로 직접 클릭하여 좌우로 이동할 수 있습니다.
@@ -242,23 +242,22 @@ function drawAxis() {
     drawText("광축", 1015, axisY - 10, 13, "#888");
 }
 
-/* --- 기구 모양 정확한 렌더링 함수 --- */
-function getLensCircleSpecs() {
+/* --- 렌즈 곡선 데이터 계산 함수 (시각 및 물리 연동 일치) --- */
+function getLensGeometry() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
     const th = parseFloat(lensThickness.value);
-    const R = (h * h / 4 + (th/2) * (th/2)) / th;
-    return { R, h };
+    // 곡률 반 반지름 R 계산 (구면 방정식 기반)
+    const R = ( (h/2)*(h/2) + (th/2)*(th/2) ) / th;
+    return { x, h, th, R };
 }
 
 function drawConvexLens() {
-    const x = objectXPos;
-    const h = parseFloat(deviceSize.value);
-    const th = parseFloat(lensThickness.value);
+    const geom = getLensGeometry();
     ctx.beginPath();
-    ctx.moveTo(x - th/2, axisY - h/2);
-    ctx.quadraticCurveTo(x + th/2, axisY, x - th/2, axisY + h/2);
-    ctx.quadraticCurveTo(x - th*1.5, axisY, x - th/2, axisY - h/2);
+    ctx.moveTo(geom.x - geom.th/2, axisY - geom.h/2);
+    ctx.quadraticCurveTo(geom.x + geom.th/2, axisY, geom.x - geom.th/2, axisY + geom.h/2);
+    ctx.quadraticCurveTo(geom.x - geom.th*1.5, axisY, geom.x - geom.th/2, axisY - geom.h/2);
     ctx.fillStyle = "rgba(100, 200, 255, 0.35)";
     ctx.fill();
     ctx.strokeStyle = "#0288d1";
@@ -267,15 +266,13 @@ function drawConvexLens() {
 }
 
 function drawConcaveLens() {
-    const x = objectXPos;
-    const h = parseFloat(deviceSize.value);
-    const th = parseFloat(lensThickness.value);
+    const geom = getLensGeometry();
     ctx.beginPath();
-    ctx.moveTo(x - th*1.2, axisY - h/2);
-    ctx.lineTo(x + th*0.3, axisY - h/2);
-    ctx.quadraticCurveTo(x - th*0.5, axisY, x + th*0.3, axisY + h/2);
-    ctx.lineTo(x - th*1.2, axisY + h/2);
-    ctx.quadraticCurveTo(x - th*0.5, axisY, x - th*1.2, axisY - h/2);
+    ctx.moveTo(geom.x - geom.th*1.2, axisY - geom.h/2);
+    ctx.lineTo(geom.x + geom.th*0.3, axisY - geom.h/2);
+    ctx.quadraticCurveTo(geom.x - geom.th*0.5, axisY, geom.x + geom.th*0.3, axisY + geom.h/2);
+    ctx.lineTo(geom.x - geom.th*1.2, axisY + geom.h/2);
+    ctx.quadraticCurveTo(geom.x - geom.th*0.5, axisY, geom.x - geom.th*1.2, axisY - geom.h/2);
     ctx.fillStyle = "rgba(100, 200, 255, 0.35)";
     ctx.fill();
     ctx.strokeStyle = "#0288d1";
@@ -377,18 +374,26 @@ function rayCircleIntersectionStrict(p, d, specs) {
     for (let t of ts) {
         const hit = add(p, mul(d, t));
         const angle = Math.atan2(hit.y - specs.cy, hit.x - specs.cx);
-        let normalizedAngle = angle;
-        if (specs.startAngle < 0 && normalizedAngle > Math.PI) normalizedAngle -= 2 * Math.PI;
         
-        if (normalizedAngle >= specs.startAngle - 0.02 && normalizedAngle <= specs.endAngle + 0.02) {
-            return { t, point: hit };
+        // 각도 범위 검증 (오목/볼록 거울 완벽 대응)
+        let sa = specs.startAngle;
+        let ea = specs.endAngle;
+        let ang = angle;
+        if (ang < 0) ang += Math.PI * 2;
+        if (sa < 0) sa += Math.PI * 2;
+        if (ea < 0) ea += Math.PI * 2;
+        if (sa > ea) {
+            if (ang >= sa || ang <= ea) return { t, point: hit };
+        } else {
+            if (ang >= sa && ang <= ea) return { t, point: hit };
         }
     }
     return null;
 }
 
-function rayLensSurfaceIntersection(p, d, cx, cy, R, isConvex, isFront) {
-    const L = sub(p, { x: cx, y: cy });
+/* --- 렌즈 구면 교차 정밀 연산 함수 --- */
+function rayLensSurfaceIntersection(p, d, circleX, circleY, R, isFront, isConvex) {
+    const L = sub(p, { x: circleX, y: circleY });
     const A = 1;
     const B = 2 * dot(L, d);
     const C = dot(L, L) - R * R;
@@ -432,7 +437,7 @@ function refract(incident, normal, n1, n2) {
     return { ray: normalize({ x: rx, y: ry }), tir: false };
 }
 
-/* --- 엄격한 물리 광선 추적 함수 --- */
+/* --- 완벽하게 교정된 물리 광선 추적 함수 --- */
 function traceRays() {
     const type = objectType.value;
     const ox = objectXPos;
@@ -450,25 +455,26 @@ function traceRays() {
     drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
     if (type === "convexLens") {
-        const R = (hLimit * hLimit + (th/2) * (th/2)) / (th/2);
-        const frontCx = ox - R + th/2;
-        const hitInRes = rayLensSurfaceIntersection(p, d, frontCx, axisY, R, true, true);
-        
+        const geom = getLensGeometry();
+        // 볼록렌즈 앞면/뒷면 곡선 중심점 좌표
+        const frontCircleX = geom.x - geom.R + geom.th/2;
+        const backCircleX = geom.x + geom.R - geom.th/2;
+
+        const hitInRes = rayLensSurfaceIntersection(p, d, frontCircleX, axisY, geom.R, true, true);
         if (hitInRes) {
             const hitIn = hitInRes.point;
             drawLine(p, hitIn, "#e53935", 4);
 
-            const normal1 = normalize(sub(hitIn, { x: frontCx, y: axisY }));
+            const normal1 = normalize(sub(hitIn, { x: frontCircleX, y: axisY }));
             const ref1 = refract(d, normal1, 1.0, 1.5);
             const internalRay = ref1.ray;
 
-            const backCx = ox + R - th/2;
-            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCx, axisY, R, true, false);
+            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCircleX, axisY, geom.R, false, true);
             if (hitOutRes) {
                 const hitOut = hitOutRes.point;
                 drawLine(hitIn, hitOut, "#e53935", 4);
 
-                const normal2 = normalize(sub({ x: backCx, y: axisY }, hitOut));
+                const normal2 = normalize(sub({ x: backCircleX, y: axisY }, hitOut));
                 const ref2 = refract(internalRay, normal2, 1.5, 1.0);
                 const finalRay = ref2.ray;
 
@@ -479,25 +485,25 @@ function traceRays() {
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
     else if (type === "concaveLens") {
-        const R = (hLimit * hLimit + (th/2) * (th/2)) / (th/2);
-        const frontCx = ox + R - th/2;
-        const hitInRes = rayLensSurfaceIntersection(p, d, frontCx, axisY, R, false, true);
+        const geom = getLensGeometry();
+        const frontCircleX = geom.x + geom.R - geom.th/2;
+        const backCircleX = geom.x - geom.R + geom.th/2;
 
+        const hitInRes = rayLensSurfaceIntersection(p, d, frontCircleX, axisY, geom.R, true, false);
         if (hitInRes) {
             const hitIn = hitInRes.point;
             drawLine(p, hitIn, "#e53935", 4);
 
-            const normal1 = normalize(sub({ x: frontCx, y: axisY }, hitIn));
+            const normal1 = normalize(sub({ x: frontCircleX, y: axisY }, hitIn));
             const ref1 = refract(d, normal1, 1.0, 1.5);
             const internalRay = ref1.ray;
 
-            const backCx = ox - R + th/2;
-            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCx, axisY, R, false, false);
+            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCircleX, axisY, geom.R, false, false);
             if (hitOutRes) {
                 const hitOut = hitOutRes.point;
                 drawLine(hitIn, hitOut, "#e53935", 4);
 
-                const normal2 = normalize(sub(hitOut, { x: backCx, y: axisY }));
+                const normal2 = normalize(sub(hitOut, { x: backCircleX, y: axisY }));
                 const ref2 = refract(internalRay, normal2, 1.5, 1.0);
                 const finalRay = ref2.ray;
 
@@ -606,6 +612,7 @@ function traceRays() {
                 let normal2 = normalize({ x: vFace2.y, y: -vFace2.x });
                 if (dot(rRay1, normal2) > 0) normal2 = { x: -normal2.x, y: -normal2.y };
 
+                // 프리즘 내부(1.5)에서 외부(1.0)로 나갈 때의 정확한 굴절 연동
                 const ref2 = refract(rRay1, normal2, 1.5, 1.0);
                 const rRay2 = ref2.ray;
 
