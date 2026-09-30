@@ -740,6 +740,7 @@ function traceRays() {
         return;
     }
 
+    /* 점선 = 렌즈/거울을 만나지 않고 원래대로 직진했을 때의 경로 */
     drawLine(
         p,
         add(p, mul(d, 1000)),
@@ -784,23 +785,30 @@ function traceRays() {
             const hitOut =
                 hitOutRes.point;
 
-            // 레이저 한 줄기만 렌즈까지 진행
-            drawLine(
-                p,
-                hitIn,
-                "#e53935",
-                4
+            /*
+             * 볼록렌즈
+             * 레이저 한 줄기가 렌즈를 통과한 뒤
+             * 하나의 연속된 광선으로 초점까지 진행
+             */
+
+            ctx.beginPath();
+            ctx.setLineDash([]);
+
+            ctx.moveTo(
+                p.x,
+                p.y
             );
 
-            // 렌즈 내부
-            drawLine(
-                hitIn,
-                hitOut,
-                "#e53935",
-                4
+            ctx.lineTo(
+                hitIn.x,
+                hitIn.y
             );
 
-            // 볼록렌즈의 초점
+            ctx.lineTo(
+                hitOut.x,
+                hitOut.y
+            );
+
             const f = g.R / 2;
 
             const focus = {
@@ -808,13 +816,14 @@ function traceRays() {
                 y: axisY
             };
 
-            // 볼록렌즈를 통과한 한 줄기의 빛이 초점으로 수렴
-            drawLine(
-                hitOut,
-                focus,
-                "#e53935",
-                4
+            ctx.lineTo(
+                focus.x,
+                focus.y
             );
+
+            ctx.strokeStyle = "#e53935";
+            ctx.lineWidth = 4;
+            ctx.stroke();
 
             return;
         }
@@ -863,7 +872,7 @@ function traceRays() {
             const hitOut =
                 hitOutRes.point;
 
-            // 레이저 한 줄기만 렌즈까지 진행
+            // 레이저 한 줄기
             drawLine(
                 p,
                 hitIn,
@@ -879,15 +888,18 @@ function traceRays() {
                 4
             );
 
-            // 오목렌즈의 가상 초점
-            const f = g.R / 2;
+            /*
+             * 오목렌즈
+             * 기존보다 더 가까운 가상 초점을 사용하여
+             * 굴절 후 발산 각도를 크게 표시
+             */
+            const f = g.R * 0.25;
 
             const virtualFocus = {
                 x: g.x - f,
                 y: axisY
             };
 
-            // 가상 초점에서 출발하는 것처럼 발산
             const finalRay =
                 normalize(
                     sub(
@@ -906,7 +918,7 @@ function traceRays() {
                 4
             );
 
-            // 발산한 광선을 뒤로 연장한 가상 경로
+            // 가상 초점까지의 연장선
             drawLine(
                 virtualFocus,
                 hitOut,
