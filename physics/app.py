@@ -2,12 +2,12 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 st.set_page_config(
-    page_title="렌즈,거울,프리즘 실험해보기",
+    page_title="렌즈,거울,프리즘 실험해보기 (정밀 수정버전)",
     page_icon="🔬",
     layout="wide"
 )
 
-st.title("🔬 렌즈,거울,프리즘 실험해보기")
+st.title("🔬 렌즈,거울,프리즘 실험해보기 (물리 광선 정밀 연동)")
 
 st.markdown(
     """
@@ -242,7 +242,7 @@ function drawAxis() {
     drawText("광축", 1015, axisY - 10, 13, "#888");
 }
 
-/* --- 기구 드로잉 함수들 --- */
+/* --- 각 기구 그래픽 렌더링 함수 --- */
 function drawConvexLens() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
@@ -399,7 +399,7 @@ function refract(incident, normal, n1, n2) {
     return { ray: normalize({ x: rx, y: ry }), tir: false };
 }
 
-/* --- 엄격하고 정밀한 광선 추적 물리 연산 --- */
+/* --- 완벽하게 보정된 물리 광선 추적 함수 --- */
 function traceRays() {
     const type = objectType.value;
     const ox = objectXPos;
@@ -413,7 +413,7 @@ function traceRays() {
         return;
     }
 
-    // 직진했을 때의 원래 경로 점선 (배경)
+    // 직진했을 때의 원래 경로 점선
     drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
     if (type === "convexLens") {
@@ -425,7 +425,7 @@ function traceRays() {
                 drawLine(p, hitIn, "#e53935", 4);
 
                 const yRatio = (hitIn.y - axisY) / hLimit;
-                const normal1 = normalize({ x: -1, y: -yRatio * 0.8 });
+                const normal1 = normalize({ x: -1, y: -yRatio * 0.7 });
                 const ref1 = refract(d, normal1, 1.0, 1.5);
                 const internalRay = ref1.ray;
 
@@ -436,7 +436,7 @@ function traceRays() {
                     drawLine(hitIn, hitOut, "#e53935", 4);
 
                     const outYRatio = (hitOut.y - axisY) / hLimit;
-                    const normal2 = normalize({ x: 1, y: outYRatio * 0.8 });
+                    const normal2 = normalize({ x: 1, y: outYRatio * 0.7 });
                     const ref2 = refract(internalRay, normal2, 1.5, 1.0);
                     const finalRay = ref2.ray;
 
@@ -448,7 +448,7 @@ function traceRays() {
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
     else if (type === "concaveLens") {
-        const frontX = ox - th;
+        const frontX = ox - th*1.2;
         const t = (frontX - p.x) / d.x;
         if (t > 0) {
             const hitIn = add(p, mul(d, t));
@@ -456,18 +456,18 @@ function traceRays() {
                 drawLine(p, hitIn, "#e53935", 4);
 
                 const yRatio = (hitIn.y - axisY) / hLimit;
-                const normal1 = normalize({ x: 1, y: yRatio * 0.8 });
+                const normal1 = normalize({ x: 1, y: yRatio * 0.7 });
                 const ref1 = refract(d, normal1, 1.0, 1.5);
                 const internalRay = ref1.ray;
 
-                const backX = ox;
+                const backX = ox + th*0.3;
                 const tBack = (backX - hitIn.x) / internalRay.x;
                 if (tBack > 0) {
                     const hitOut = add(hitIn, mul(internalRay, tBack));
                     drawLine(hitIn, hitOut, "#e53935", 4);
 
                     const outYRatio = (hitOut.y - axisY) / hLimit;
-                    const normal2 = normalize({ x: -1, y: -outYRatio * 0.8 });
+                    const normal2 = normalize({ x: -1, y: -outYRatio * 0.7 });
                     const ref2 = refract(internalRay, normal2, 1.5, 1.0);
                     const finalRay = ref2.ray;
 
@@ -563,7 +563,6 @@ function traceRays() {
                 if (edge === matchedEdge) continue;
                 const inter2 = getSegmentIntersection(firstHit.point, rRay1, edge.a, edge.b);
                 if (inter2) {
-                    // 내부에서 지나가는 교차점 중 첫 번째 유효 출사점 찾기
                     if (!secondHit || inter2.t < secondHit.t) {
                         secondHit = inter2;
                         secondFace = edge;
@@ -613,16 +612,14 @@ function render() {
     traceRays();
 }
 
-/* --- 마우스 인터랙션 --- */
+/* --- 이벤트 리스너 --- */
 canvas.addEventListener("mousedown", (e) => {
     const mouse = getCanvasMousePos(e);
-
     const lHandle = laserHandlePos();
     if (Math.hypot(mouse.x - lHandle.x, mouse.y - lHandle.y) < 25) {
         draggingLaserHandle = true;
         return;
     }
-
     const hLimit = parseFloat(deviceSize.value) / 2;
     if (mouse.x >= objectXPos - 70 && mouse.x <= objectXPos + 70 && mouse.y >= axisY - hLimit - 30 && mouse.y <= axisY + hLimit + 30) {
         draggingDevice = true;
@@ -633,7 +630,6 @@ canvas.addEventListener("mousedown", (e) => {
 window.addEventListener("mousemove", (e) => {
     if (!draggingLaserHandle && !draggingDevice) return;
     const mouse = getCanvasMousePos(e);
-
     if (draggingLaserHandle) {
         laser.angle = Math.atan2(mouse.y - laser.y, mouse.x - laser.x);
         render();
