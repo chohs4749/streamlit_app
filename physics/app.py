@@ -740,7 +740,11 @@ function traceRays() {
         return;
     }
 
-    /* 점선 = 렌즈/거울을 만나지 않고 원래대로 직진했을 때의 경로 */
+    /*
+     * 점선:
+     * 레이저가 아무런 굴절이나 반사를 받지 않고
+     * 처음 발사된 방향 그대로 직진했을 때의 경로
+     */
     drawLine(
         p,
         add(p, mul(d, 1000)),
@@ -786,11 +790,26 @@ function traceRays() {
                 hitOutRes.point;
 
             /*
-             * 볼록렌즈
-             * 레이저 한 줄기가 렌즈를 통과한 뒤
-             * 하나의 연속된 광선으로 초점까지 진행
+             * 볼록렌즈의 초점.
+             * 실제 레이저가 렌즈를 통과한 뒤
+             * 하나의 선으로 이 점을 향하도록 한다.
              */
+            const focusDistance =
+                Math.max(
+                    120,
+                    g.R * 0.5
+                );
 
+            const focus = {
+                x: g.x + focusDistance,
+                y: axisY
+            };
+
+            /*
+             * 실제 레이저 광선을 하나의 path로 그린다.
+             * 따로 두 개의 광선을 그리지 않기 때문에
+             * 굴절 후 두 갈래로 나뉘어 보이지 않는다.
+             */
             ctx.beginPath();
             ctx.setLineDash([]);
 
@@ -808,13 +827,6 @@ function traceRays() {
                 hitOut.x,
                 hitOut.y
             );
-
-            const f = g.R / 2;
-
-            const focus = {
-                x: g.x + f,
-                y: axisY
-            };
 
             ctx.lineTo(
                 focus.x,
@@ -872,7 +884,10 @@ function traceRays() {
             const hitOut =
                 hitOutRes.point;
 
-            // 레이저 한 줄기
+            /*
+             * 렌즈에 들어가기 전까지는
+             * 레이저 한 줄기 그대로 진행
+             */
             drawLine(
                 p,
                 hitIn,
@@ -880,7 +895,9 @@ function traceRays() {
                 4
             );
 
-            // 렌즈 내부
+            /*
+             * 렌즈 내부
+             */
             drawLine(
                 hitIn,
                 hitOut,
@@ -889,14 +906,18 @@ function traceRays() {
             );
 
             /*
-             * 오목렌즈
-             * 기존보다 더 가까운 가상 초점을 사용하여
-             * 굴절 후 발산 각도를 크게 표시
+             * 오목렌즈:
+             * 가상 초점을 렌즈에 더 가깝게 설정하여
+             * 굴절 후 발산각을 크게 보이도록 한다.
              */
-            const f = g.R * 0.25;
+            const virtualFocusDistance =
+                Math.max(
+                    55,
+                    g.R * 0.25
+                );
 
             const virtualFocus = {
-                x: g.x - f,
+                x: g.x - virtualFocusDistance,
                 y: axisY
             };
 
@@ -908,6 +929,10 @@ function traceRays() {
                     )
                 );
 
+            /*
+             * 오목렌즈에서 굴절된 뒤
+             * 한 줄기의 레이저가 크게 발산한다.
+             */
             drawLine(
                 hitOut,
                 add(
@@ -918,7 +943,9 @@ function traceRays() {
                 4
             );
 
-            // 가상 초점까지의 연장선
+            /*
+             * 가상 초점으로 되돌려 그은 점선
+             */
             drawLine(
                 virtualFocus,
                 hitOut,
