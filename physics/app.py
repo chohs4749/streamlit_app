@@ -336,6 +336,23 @@ function getSegmentIntersection(p, d, a, b) {
     return null;
 }
 
+function rayCircleIntersection(p, d, circleCenter, radius) {
+    const L = sub(p, circleCenter);
+    const A = 1;
+    const B = 2 * dot(L, d);
+    const C = dot(L, L) - radius * radius;
+    const disc = B * B - 4 * A * C;
+    if (disc < 0) return null;
+    
+    const t1 = (-B - Math.sqrt(disc)) / (2 * A);
+    const t2 = (-B + Math.sqrt(disc)) / (2 * A);
+    
+    let ts = [t1, t2].filter(t => t > 0);
+    if (ts.length === 0) return null;
+    ts.sort((a,b) => a - b);
+    return ts[0];
+}
+
 function refract(incident, normal, n1, n2) {
     let cosi = -dot(incident, normal);
     let etai = n1, etat = n2;
@@ -374,71 +391,75 @@ function traceRays() {
     drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
     if (type === "convexLens") {
-        // 볼록렌즈: 입사면과 출사면 두 번 굴절
-        const relY = (p.y + (d.y / d.x) * (ox - p.x) - axisY);
-        const normY = Math.min(1, Math.max(-1, relY / hLimit));
-        
-        const hitInX = ox - (th / 2) * (1 - normY * normY * 0.4);
-        const hitIn = { x: hitInX, y: p.y + (d.y / d.x) * (hitInX - p.x) };
-        
-        const hitOutX = ox + (th / 2) * (1 - normY * normY * 0.4);
-        const hitOut = { x: hitOutX, y: hitIn.y };
+        // 볼록렌즈 구면 방정식 기반 정확한 2회 굴절 연산
+        const R_lens = Math.max(th, ((hLimit)*(hLimit) + (th/2)*(th/2)) / th);
+        const frontCenter = { x: ox + R_lens - th/2, y: axisY };
+        const backCenter = { x: ox - R_lens + th/2, y: axisY };
 
-        if (Math.abs(hitIn.y - axisY) <= hLimit) {
-            drawLine(p, hitIn, "#e53935", 4); // 1. 입사 전 광선
+        const t1 = rayCircleIntersection(p, d, frontCenter, R_lens);
+        if (t1 !== null) {
+            const hitIn = add(p, mul(d, t1));
+            if (Math.abs(hitIn.y - axisY) <= hLimit) {
+                drawLine(p, hitIn, "#e53935", 4); // 1. 입사 전 광선
 
-            // 첫 번째 굴절 (공기 ➔ 렌즈 내부 n=1.5)
-            const normal1 = normalize({ x: -1, y: -(hitIn.y - axisY) * 0.015 });
-            const ref1 = refract(d, normal1, 1.0, 1.5);
-            const internalRay = ref1.ray;
+                // 1차 굴절 (공기 -> 렌즈 내부 n=1.5)
+                const normal1 = normalize(sub(frontCenter, hitIn));
+                const ref1 = refract(d, normal1, 1.0, 1.5);
+                const internalRay = ref1.ray;
 
-            drawLine(hitIn, hitOut, "#e53935", 4); // 2. 렌즈 내부 통과 광선
+                const t2 = rayCircleIntersection(hitIn, internalRay, backCenter, R_lens);
+                if (t2 !== null) {
+                    const hitOut = add(hitIn, mul(internalRay, t2));
+                    drawLine(hitIn, hitOut, "#e53935", 4); // 2. 렌즈 내부 통과 광선
 
-            // 두 번째 굴절 (렌즈 내부 n=1.5 ➔ 공기)
-            const normal2 = normalize({ x: 1, y: (hitOut.y - axisY) * 0.015 });
-            const ref2 = refract(internalRay, normal2, 1.5, 1.0);
-            const finalRay = ref2.ray;
+                    // 2차 굴절 (렌즈 내부 n=1.5 -> 공기)
+                    const normal2 = normalize(sub(hitOut, backCenter));
+                    const ref2 = refract(internalRay, normal2, 1.5, 1.0);
+                    const finalRay = ref2.ray;
 
-            drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4); // 3. 최종 출사 광선
-        } else {
-            drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+                    drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4); // 3. 최종 출사 광선
+                    return;
+                }
+            }
         }
+        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     } 
     else if (type === "concaveLens") {
-        // 오목렌즈: 입사면과 출사면 두 번 굴절
-        const relY = (p.y + (d.y / d.x) * (ox - p.x) - axisY);
-        const normY = Math.min(1, Math.max(-1, relY / hLimit));
-        
-        const hitInX = ox - th * (0.8 + normY * normY * 0.2);
-        const hitIn = { x: hitInX, y: p.y + (d.y / d.x) * (hitInX - p.x) };
-        
-        const hitOutX = ox + th * (0.8 + normY * normY * 0.2);
-        const hitOut = { x: hitOutX, y: hitIn.y };
+        // 오목렌즈 구면 방정식 기반 정확한 2회 굴절 연산
+        const R_lens = Math.max(th, ((hLimit)*(hLimit) + (th/2)*(th/2)) / th);
+        const frontCenter = { x: ox - R_lens - th/2, y: axisY };
+        const backCenter = { x: ox + R_lens + th/2, y: axisY };
 
-        if (Math.abs(hitIn.y - axisY) <= hLimit) {
-            drawLine(p, hitIn, "#e53935", 4); // 1. 입사 전 광선
+        const t1 = rayCircleIntersection(p, d, frontCenter, R_lens);
+        if (t1 !== null) {
+            const hitIn = add(p, mul(d, t1));
+            if (Math.abs(hitIn.y - axisY) <= hLimit) {
+                drawLine(p, hitIn, "#e53935", 4); // 1. 입사 전 광선
 
-            // 첫 번째 굴절 (공기 ➔ 렌즈 내부)
-            const normal1 = normalize({ x: 1, y: (hitIn.y - axisY) * 0.015 });
-            const ref1 = refract(d, normal1, 1.0, 1.5);
-            const internalRay = ref1.ray;
+                const normal1 = normalize(sub(hitIn, frontCenter));
+                const ref1 = refract(d, normal1, 1.0, 1.5);
+                const internalRay = ref1.ray;
 
-            drawLine(hitIn, hitOut, "#e53935", 4); // 2. 렌즈 내부 통과 광선
+                const t2 = rayCircleIntersection(hitIn, internalRay, backCenter, R_lens);
+                if (t2 !== null) {
+                    const hitOut = add(hitIn, mul(internalRay, t2));
+                    drawLine(hitIn, hitOut, "#e53935", 4); // 2. 렌즈 내부 통과 광선
 
-            // 두 번째 굴절 (렌즈 내부 ➔ 공기)
-            const normal2 = normalize({ x: -1, y: -(hitOut.y - axisY) * 0.015 });
-            const ref2 = refract(internalRay, normal2, 1.5, 1.0);
-            const finalRay = ref2.ray;
+                    const normal2 = normalize(sub(backCenter, hitOut));
+                    const ref2 = refract(internalRay, normal2, 1.5, 1.0);
+                    const finalRay = ref2.ray;
 
-            drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4); // 3. 최종 출사 광선
-        } else {
-            drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+                    drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4); // 3. 최종 출사 광선
+                    return;
+                }
+            }
         }
+        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
     else if (type === "planeMirror") {
         const t = (ox - p.x) / d.x;
         const hitPoint = add(p, mul(d, t));
-        if (Math.abs(hitPoint.y - axisY) <= hLimit) {
+        if (t > 0 && Math.abs(hitPoint.y - axisY) <= hLimit) {
             drawLine(p, hitPoint, "#e53935", 4);
             const n = { x: -1, y: 0 };
             const dotND = dot(d, n);
@@ -450,81 +471,39 @@ function traceRays() {
     }
     else if (type === "concaveMirror") {
         const R = parseFloat(radius.value);
-        const centerX = ox + R;
-        const centerY = axisY;
-        
-        const slope = d.y / d.x;
-        const bLine = p.y - slope * p.x;
-        
-        const A_eq = 1 + slope * slope;
-        const B_eq = -2 * centerX + 2 * slope * (bLine - centerY);
-        const C_eq = centerX * centerX + (bLine - centerY) * (bLine - centerY) - R * R;
-        
-        const discriminant = B_eq * B_eq - 4 * A_eq * C_eq;
-        let actualHit = null;
-        
-        if (discriminant >= 0) {
-            const x1 = (-B_eq - Math.sqrt(discriminant)) / (2 * A_eq);
-            const x2 = (-B_eq + Math.sqrt(discriminant)) / (2 * A_eq);
-            const validX = (x1 > p.x && x1 < ox + R) ? x1 : x2;
-            const validY = slope * validX + bLine;
-            if (Math.abs(validY - axisY) <= hLimit) {
-                actualHit = { x: validX, y: validY };
+        const center = { x: ox - R, y: axisY };
+        const t = rayCircleIntersection(p, d, center, R);
+        if (t !== null) {
+            const actualHit = add(p, mul(d, t));
+            if (Math.abs(actualHit.y - axisY) <= hLimit && actualHit.x <= ox) {
+                drawLine(p, actualHit, "#e53935", 4);
+                const normal = normalize(sub(center, actualHit));
+                const dotND = dot(d, normal);
+                const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
+                drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
+                return;
             }
         }
-
-        if (actualHit) {
-            drawLine(p, actualHit, "#e53935", 4);
-            const normal = normalize(sub(actualHit, { x: centerX, y: centerY }));
-            const dotND = dot(d, normal);
-            const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
-            drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
-        } else {
-            drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
-        }
+        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
     else if (type === "convexMirror") {
         const R = parseFloat(radius.value);
-        // 볼록거울: 거울 표면이 ox에 정확히 닿도록 곡률 중심을 (ox - R, axisY)로 설정
-        const centerX = ox - R;
-        const centerY = axisY;
-
-        const slope = d.y / d.x;
-        const bLine = p.y - slope * p.x;
-
-        const A_eq = 1 + slope * slope;
-        const B_eq = -2 * centerX + 2 * slope * (bLine - centerY);
-        const C_eq = centerX * centerX + (bLine - centerY) * (bLine - centerY) - R * R;
-
-        const discriminant = B_eq * B_eq - 4 * A_eq * C_eq;
-        let actualHit = null;
-
-        if (discriminant >= 0) {
-            const x1 = (-B_eq - Math.sqrt(discriminant)) / (2 * A_eq);
-            const x2 = (-B_eq + Math.sqrt(discriminant)) / (2 * A_eq);
-            // 빛이 다가오는 방향에서 볼록거울 표면(ox 근처)에 정확히 닿는 지점 계산
-            const validX = (x1 > p.x && x1 <= ox) ? x1 : (x2 > p.x && x2 <= ox ? x2 : null);
-            if (validX !== null) {
-                const validY = slope * validX + bLine;
-                if (Math.abs(validY - axisY) <= hLimit) {
-                    actualHit = { x: validX, y: validY };
-                }
+        const center = { x: ox + R, y: axisY };
+        const t = rayCircleIntersection(p, d, center, R);
+        if (t !== null) {
+            const actualHit = add(p, mul(d, t));
+            if (Math.abs(actualHit.y - axisY) <= hLimit && actualHit.x <= ox) {
+                drawLine(p, actualHit, "#e53935", 4);
+                const normal = normalize(sub(actualHit, center));
+                const dotND = dot(d, normal);
+                const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
+                drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
+                return;
             }
         }
-
-        if (actualHit) {
-            drawLine(p, actualHit, "#e53935", 4);
-            // 볼록거울 반사 법선 벡터
-            const normal = normalize(sub(actualHit, { x: centerX, y: centerY }));
-            const dotND = dot(d, normal);
-            const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
-            drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
-        } else {
-            drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
-        }
+        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
     else if (type === "prism") {
-        // 프리즘은 사용자님이 완벽하다고 하신 기존 원래 로직 그대로 유지
         const A = parseFloat(prismAngle.value) * Math.PI / 180;
         const base = parseFloat(deviceSize.value);
         const height = base / (2 * Math.tan(A / 2));
@@ -533,33 +512,48 @@ function traceRays() {
         const Vtop = { x: ox, y: axisY - height / 2 };
         const Vbr = { x: ox + base / 2, y: axisY + height / 2 };
 
-        const inter1 = getSegmentIntersection(p, d, Vbl, Vtop);
+        // 프리즘의 모든 면(좌측면, 우측면, 밑면)에서 교차점을 정확히 검출하도록 확장
+        let inter1 = getSegmentIntersection(p, d, Vbl, Vtop);
+        let secondFaceA = Vtop, secondFaceB = Vbr;
+        let isLeftToRight = true;
+
+        if (!inter1) {
+            inter1 = getSegmentIntersection(p, d, Vtop, Vbr);
+            secondFaceA = Vbl; secondFaceB = Vtop;
+            isLeftToRight = false;
+        }
+        if (!inter1) {
+            inter1 = getSegmentIntersection(p, d, Vbl, Vbr);
+            secondFaceA = Vtop; secondFaceB = Vbl;
+            isLeftToRight = false;
+        }
+
         if (inter1) {
             drawLine(p, inter1.point, "#e53935", 4);
             
-            const vLeft = sub(Vtop, Vbl);
-            let normal1 = normalize({ x: -vLeft.y, y: vLeft.x });
+            let vFace1 = isLeftToRight ? sub(Vtop, Vbl) : sub(Vbr, Vtop);
+            let normal1 = normalize({ x: -vFace1.y, y: vFace1.x });
             if (dot(d, normal1) > 0) normal1 = { x: -normal1.x, y: -normal1.y };
 
             const ref1 = refract(d, normal1, 1.0, 1.5);
             const rRay1 = ref1.ray;
 
-            const inter2 = getSegmentIntersection(inter1.point, rRay1, Vtop, Vbr);
+            const inter2 = getSegmentIntersection(inter1.point, rRay1, secondFaceA, secondFaceB);
             if (inter2) {
                 drawLine(inter1.point, inter2.point, "#e53935", 4);
 
-                const vRight = sub(Vbr, Vtop);
-                let normal2 = normalize({ x: vRight.y, y: -vRight.x });
+                let vFace2 = sub(secondFaceB, secondFaceA);
+                let normal2 = normalize({ x: vFace2.y, y: -vFace2.x });
                 if (dot(rRay1, normal2) > 0) normal2 = { x: -normal2.x, y: -normal2.y };
 
                 const ref2 = refract(rRay1, normal2, 1.5, 1.0);
                 const rRay2 = ref2.ray;
 
                 drawLine(inter2.point, add(inter2.point, mul(rRay2, 800)), "#e53935", 4);
+                return;
             }
-        } else {
-            drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
         }
+        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
 }
 
