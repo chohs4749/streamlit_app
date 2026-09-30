@@ -117,8 +117,8 @@ input[type="range"] {
 
     <div id="lensThicknessRow" class="control-grid">
         <label>렌즈 두께</label>
-        <input id="lensThickness" type="range" min="15" max="60" value="35">
-        <span id="lensThicknessValue" class="value">35</span>
+        <input id="lensThickness" type="range" min="20" max="70" value="40">
+        <span id="lensThicknessValue" class="value">40</span>
     </div>
 
     <div id="radiusRow" class="control-grid" style="display:none;">
@@ -370,29 +370,36 @@ function traceRays() {
         return;
     }
 
-    // 직진했을 때의 원래 경로 점선 (배치 순서: 배경 뒤쪽에 표시)
+    // 직진했을 때의 원래 경로 점선 (배경)
     drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
     if (type === "convexLens") {
-        // 렌즈 전면 및 후면 경계면의 실제 X좌표 계산 (포물선 형태 반영)
+        // 볼록렌즈 전면(입사면) 및 후면(출사면) 곡면 경계 교차 계산 후 2번 굴절 적용
         const relY = (p.y + (d.y / d.x) * (ox - p.x) - axisY);
         const normY = Math.min(1, Math.max(-1, relY / hLimit));
         
-        // 전면 곡면 교차점 (빛이 들어오는 곳)
-        const hitInX = ox - (th / 2) * (1 - normY * normY * 0.5);
+        const hitInX = ox - (th / 2) * (1 - normY * normY * 0.4);
         const hitIn = { x: hitInX, y: p.y + (d.y / d.x) * (hitInX - p.x) };
         
-        // 후면 곡면 교차점 (빛이 나가는 곳)
-        const hitOutX = ox + (th / 2) * (1 - normY * normY * 0.5);
-        const hitOut = { x: hitOutX, y: hitIn.y + (d.y / d.x) * (hitOutX - hitIn.X || (hitOutX - hitIn.x)) };
+        const hitOutX = ox + (th / 2) * (1 - normY * normY * 0.4);
+        const hitOut = { x: hitOutX, y: hitIn.y };
 
         if (Math.abs(hitIn.y - axisY) <= hLimit) {
-            drawLine(p, hitIn, "#e53935", 4);
-            drawLine(hitIn, hitOut, "#e53935", 4);
+            drawLine(p, hitIn, "#e53935", 4); // 1. 입사 전 광선
 
-            const focus = { x: ox + 180, y: axisY };
-            const outDir = normalize(sub(focus, hitOut));
-            drawLine(hitOut, add(hitOut, mul(outDir, 800)), "#e53935", 4);
+            // 첫 번째 굴절 (공기 ➔ 렌즈 내부 n=1.5)
+            const normal1 = normalize({ x: -1, y: -(hitIn.y - axisY) * 0.015 });
+            const ref1 = refract(d, normal1, 1.0, 1.5);
+            const internalRay = ref1.ray;
+
+            drawLine(hitIn, hitOut, "#e53935", 4); // 2. 렌즈 내부 통과 광선
+
+            // 두 번째 굴절 (렌즈 내부 n=1.5 ➔ 공기)
+            const normal2 = normalize({ x: 1, y: (hitOut.y - axisY) * 0.015 });
+            const ref2 = refract(internalRay, normal2, 1.5, 1.0);
+            const finalRay = ref2.ray;
+
+            drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4); // 3. 최종 출사 광선
         } else {
             drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
         }
@@ -404,15 +411,25 @@ function traceRays() {
         const hitInX = ox - th * (0.8 + normY * normY * 0.2);
         const hitIn = { x: hitInX, y: p.y + (d.y / d.x) * (hitInX - p.x) };
         
-        const hitOutX = ox + th * 0.3;
-        const hitOut = { x: hitOutX, y: hitIn.y + (d.y / d.x) * (hitOutX - hitIn.x) };
+        const hitOutX = ox + th * (0.8 + normY * normY * 0.2);
+        const hitOut = { x: hitOutX, y: hitIn.y };
 
         if (Math.abs(hitIn.y - axisY) <= hLimit) {
-            drawLine(p, hitIn, "#e53935", 4);
-            drawLine(hitIn, hitOut, "#e53935", 4);
+            drawLine(p, hitIn, "#e53935", 4); // 1. 입사 전 광선
 
-            const outDir = normalize({ x: 1, y: relY > 0 ? 0.55 : -0.55 });
-            drawLine(hitOut, add(hitOut, mul(outDir, 800)), "#e53935", 4);
+            // 첫 번째 굴절 (공기 ➔ 렌즈 내부)
+            const normal1 = normalize({ x: 1, y: (hitIn.y - axisY) * 0.015 });
+            const ref1 = refract(d, normal1, 1.0, 1.5);
+            const internalRay = ref1.ray;
+
+            drawLine(hitIn, hitOut, "#e53935", 4); // 2. 렌즈 내부 통과 광선
+
+            // 두 번째 굴절 (렌즈 내부 ➔ 공기)
+            const normal2 = normalize({ x: -1, y: -(hitOut.y - axisY) * 0.015 });
+            const ref2 = refract(internalRay, normal2, 1.5, 1.0);
+            const finalRay = ref2.ray;
+
+            drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4); // 3. 최종 출사 광선
         } else {
             drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
         }
@@ -467,6 +484,7 @@ function traceRays() {
     }
     else if (type === "convexMirror") {
         const R = parseFloat(radius.value);
+        // 볼록거울 곡률 중심은 거울보다 왼쪽에 위치함: center = (ox - R, axisY)
         const centerX = ox - R;
         const centerY = axisY;
 
@@ -483,7 +501,7 @@ function traceRays() {
         if (discriminant >= 0) {
             const x1 = (-B_eq - Math.sqrt(discriminant)) / (2 * A_eq);
             const x2 = (-B_eq + Math.sqrt(discriminant)) / (2 * A_eq);
-            // 볼록거울 표면은 ox 왼쪽에 위치하므로 해당 영역의 교차점 선택
+            // 볼록거울 표면은 ox 근처에 위치하므로 레이저 진행 방향(오른쪽)에 있는 실제 표면 교차점 선택
             const validX = (x1 > p.x && x1 <= ox) ? x1 : (x2 > p.x && x2 <= ox ? x2 : null);
             if (validX !== null) {
                 const validY = slope * validX + bLine;
@@ -495,7 +513,8 @@ function traceRays() {
 
         if (actualHit) {
             drawLine(p, actualHit, "#e53935", 4);
-            const normal = normalize(sub({ x: centerX, y: centerY }, actualHit));
+            // 볼록거울 반사 법선 벡터 (중심에서 표면을 향하는 방향의 반대 또는 입사각 대칭)
+            const normal = normalize(sub(actualHit, { x: centerX, y: centerY }));
             const dotND = dot(d, normal);
             const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
             drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
