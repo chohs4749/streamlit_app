@@ -115,6 +115,12 @@ input[type="range"] {
         <span id="deviceSizeValue" class="value">220</span>
     </div>
 
+    <div id="lensThicknessRow" class="control-grid">
+        <label>렌즈 두께</label>
+        <input id="lensThickness" type="range" min="10" max="60" value="30">
+        <span id="lensThicknessValue" class="value">30</span>
+    </div>
+
     <div id="radiusRow" class="control-grid" style="display:none;">
         <label>거울 곡률반지름 (R)</label>
         <input id="radius" type="range" min="100" max="350" value="220">
@@ -152,9 +158,11 @@ let draggingDevice = false;
 
 const objectType = document.getElementById("objectType");
 const deviceSize = document.getElementById("deviceSize");
+const lensThickness = document.getElementById("lensThickness");
 const radius = document.getElementById("radius");
 const prismAngle = document.getElementById("prismAngle");
 
+const lensThicknessRow = document.getElementById("lensThicknessRow");
 const radiusRow = document.getElementById("radiusRow");
 const prismRow = document.getElementById("prismRow");
 
@@ -238,10 +246,11 @@ function drawAxis() {
 function drawConvexLens() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
+    const th = parseFloat(lensThickness.value);
     ctx.beginPath();
-    ctx.moveTo(x - 15, axisY - h/2);
-    ctx.quadraticCurveTo(x + 15, axisY, x - 15, axisY + h/2);
-    ctx.quadraticCurveTo(x - 45, axisY, x - 15, axisY - h/2);
+    ctx.moveTo(x - th/2, axisY - h/2);
+    ctx.quadraticCurveTo(x + th/2, axisY, x - th/2, axisY + h/2);
+    ctx.quadraticCurveTo(x - th*1.5, axisY, x - th/2, axisY - h/2);
     ctx.fillStyle = "rgba(100, 200, 255, 0.35)";
     ctx.fill();
     ctx.strokeStyle = "#0288d1";
@@ -252,12 +261,13 @@ function drawConvexLens() {
 function drawConcaveLens() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
+    const th = parseFloat(lensThickness.value);
     ctx.beginPath();
-    ctx.moveTo(x - 35, axisY - h/2);
-    ctx.lineTo(x + 5, axisY - h/2);
-    ctx.quadraticCurveTo(x - 15, axisY, x + 5, axisY + h/2);
-    ctx.lineTo(x - 35, axisY + h/2);
-    ctx.quadraticCurveTo(x - 15, axisY, x - 35, axisY - h/2);
+    ctx.moveTo(x - th*1.2, axisY - h/2);
+    ctx.lineTo(x + th*0.3, axisY - h/2);
+    ctx.quadraticCurveTo(x - th*0.5, axisY, x + th*0.3, axisY + h/2);
+    ctx.lineTo(x - th*1.2, axisY + h/2);
+    ctx.quadraticCurveTo(x - th*0.5, axisY, x - th*1.2, axisY - h/2);
     ctx.fillStyle = "rgba(100, 200, 255, 0.35)";
     ctx.fill();
     ctx.strokeStyle = "#0288d1";
@@ -353,6 +363,7 @@ function traceRays() {
     const p = { x: laser.x, y: laser.y };
     const d = normalize({ x: Math.cos(laser.angle), y: Math.sin(laser.angle) });
     const hLimit = parseFloat(deviceSize.value) / 2;
+    const th = parseFloat(lensThickness.value);
 
     if (Math.abs(d.x) < 1e-5) {
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
@@ -368,7 +379,6 @@ function traceRays() {
     const hitPoint = add(p, mul(d, t));
     const dy = hitPoint.y - axisY;
 
-    // 거울 및 렌즈 높이 판정 (범위를 벗어나면 직진)
     if (Math.abs(dy) > hLimit && type !== 'prism') {
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
         return;
@@ -376,16 +386,14 @@ function traceRays() {
 
     // 1. 실제 레이저 입사 광선
     drawLine(p, hitPoint, "#e53935", 4);
-    // 2. 직진했을 때의 원래 경로 점선 (출발지부터 쭉 직진)
+    // 2. 직진했을 때의 원래 경로 점선
     drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
     if (type === "convexLens") {
-        // 볼록렌즈: 두 번 굴절 (입사면에서 안쪽으로 꺾이고, 출사면에서 모임)
-        const hitIn = { x: ox - 15, y: hitPoint.y };
-        const hitOut = { x: ox + 15, y: hitPoint.y };
+        const hitIn = { x: ox - th/2, y: hitPoint.y };
+        const hitOut = { x: ox + th/2, y: hitPoint.y };
         
         drawLine(p, hitIn, "#e53935", 4);
-        const internalDir = normalize({ x: 1, y: d.y * 0.5 });
         drawLine(hitIn, hitOut, "#e53935", 4);
 
         const focus = { x: ox + 180, y: axisY };
@@ -393,14 +401,13 @@ function traceRays() {
         drawLine(hitOut, add(hitOut, mul(outDir, 800)), "#e53935", 4);
     } 
     else if (type === "concaveLens") {
-        // 오목렌즈: 두 번 굴절 (입사면에서 바깥으로 꺾임)
-        const hitIn = { x: ox - 25, y: hitPoint.y };
-        const hitOut = { x: ox + 5, y: hitPoint.y };
+        const hitIn = { x: ox - th/2, y: hitPoint.y };
+        const hitOut = { x: ox + th/2, y: hitPoint.y };
 
         drawLine(p, hitIn, "#e53935", 4);
         drawLine(hitIn, hitOut, "#e53935", 4);
 
-        const outDir = normalize({ x: 1, y: dy > 0 ? 0.5 : -0.5 });
+        const outDir = normalize({ x: 1, y: dy > 0 ? 0.55 : -0.55 });
         drawLine(hitOut, add(hitOut, mul(outDir, 800)), "#e53935", 4);
     }
     else if (type === "planeMirror") {
@@ -411,32 +418,45 @@ function traceRays() {
     }
     else if (type === "concaveMirror") {
         const R = parseFloat(radius.value);
-        const center = { x: ox + R, y: axisY };
+        // 오목거울 표면의 실제 X좌표 (구면 방정식 기반 정확한 도달점 계산)
+        // 거울 중심: center = (ox + R, axisY)
+        // 구면 방정식: (x - (ox + R))^2 + (y - axisY)^2 = R^2
+        const centerY = axisY;
+        const centerX = ox + R;
         
-        // 레이저 연장선과 오목거울 구면의 실제 교차점 계산
-        const distFromCenter = Math.hypot(hitPoint.x - center.x, hitPoint.y - center.y);
-        const actualHitX = center.x - R * Math.cos(Math.atan2(hitPoint.y - center.y, hitPoint.x - center.x));
-        const actualHitY = center.y - R * Math.sin(Math.atan2(hitPoint.y - center.y, hitPoint.x - center.x));
-        const actualHit = { x: actualHitX, y: actualHitY };
+        // 레이저 직선 방정식: y = p.y + (d.y / d.x) * (x - p.x)
+        // 두 방정식을 연립하여 오목거울 좌측 표면과의 교차점 유도
+        const slope = d.y / d.x;
+        const bLine = p.y - slope * p.x;
+        
+        // 이차방정식 계수 (Ax^2 + Bx + C = 0)
+        const A_eq = 1 + slope * slope;
+        const B_eq = -2 * centerX + 2 * slope * (bLine - centerY);
+        const C_eq = centerX * centerX + (bLine - centerY) * (bLine - centerY) - R * R;
+        
+        const discriminant = B_eq * B_eq - 4 * A_eq * C_eq;
+        let actualHit = hitPoint;
+        
+        if (discriminant >= 0) {
+            const x1 = (-B_eq - Math.sqrt(discriminant)) / (2 * A_eq);
+            const x2 = (-B_eq + Math.sqrt(discriminant)) / (2 * A_eq);
+            // 레이저 진행 방향(오른쪽)에 있는 교차점 선택
+            const validX = (x1 > p.x && x1 < ox + R) ? x1 : x2;
+            const validY = slope * validX + bLine;
+            actualHit = { x: validX, y: validY };
+        }
 
-        const normal = normalize(sub(actualHit, center));
+        const normal = normalize(sub(actualHit, { x: centerX, y: centerY }));
         const dotND = dot(d, normal);
         const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
 
-        // 기존 히트포인트 대신 정확한 구면 히트포인트로 갱신
-        ctx.clearRect(0, 0, W, H);
-        drawAxis();
-        drawConcaveMirror();
-        drawLaserAndHandle();
+        // 정확한 구면 교차점으로 레이저 재작도
         drawLine(p, actualHit, "#e53935", 4);
-        drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
         drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
     }
     else if (type === "convexMirror") {
         const R = parseFloat(radius.value);
         const center = { x: ox - R, y: axisY };
-
-        // 볼록거울 구면과의 정확한 교차점 계산
         const angleToHit = Math.atan2(hitPoint.y - center.y, hitPoint.x - center.x);
         const actualHitX = center.x + R * Math.cos(angleToHit);
         const actualHitY = center.y + R * Math.sin(angleToHit);
@@ -446,12 +466,7 @@ function traceRays() {
         const dotND = dot(d, normal);
         const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
 
-        ctx.clearRect(0, 0, W, H);
-        drawAxis();
-        drawConvexMirror();
-        drawLaserAndHandle();
         drawLine(p, actualHit, "#e53935", 4);
-        drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
         drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
     }
     else if (type === "prism") {
@@ -476,6 +491,7 @@ function traceRays() {
 
             const inter2 = getSegmentIntersection(inter1.point, rRay1, Vtop, Vbr);
             if (inter2) {
+                // 프리즘 내부 단일 경로만 깔끔하게 유지
                 drawLine(inter1.point, inter2.point, "#e53935", 4);
 
                 const vRight = sub(Vbr, Vtop);
@@ -493,6 +509,8 @@ function traceRays() {
 
 function updateVisibility() {
     const type = objectType.value;
+    const isLens = (type === "convexLens" || type === "concaveLens");
+    lensThicknessRow.style.display = isLens ? "grid" : "none";
     radiusRow.style.display = (type === "concaveMirror" || type === "convexMirror") ? "grid" : "none";
     prismRow.style.display = (type === "prism") ? "grid" : "none";
 }
@@ -550,6 +568,7 @@ window.addEventListener("mouseup", () => {
 
 objectType.addEventListener("change", () => { updateVisibility(); render(); });
 deviceSize.addEventListener("input", () => { document.getElementById("deviceSizeValue").innerText = deviceSize.value; render(); });
+lensThickness.addEventListener("input", () => { document.getElementById("lensThicknessValue").innerText = lensThickness.value; render(); });
 radius.addEventListener("input", () => { document.getElementById("radiusValue").innerText = radius.value; render(); });
 prismAngle.addEventListener("input", () => { document.getElementById("prismAngleValue").innerText = prismAngle.value + "°"; render(); });
 
