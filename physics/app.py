@@ -242,7 +242,7 @@ function drawAxis() {
     drawText("광축", 1015, axisY - 10, 13, "#888");
 }
 
-/* --- 광학 기구 드로잉 --- */
+/* --- 기구 드로잉 함수들 --- */
 function drawConvexLens() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
@@ -288,9 +288,9 @@ function getConcaveMirrorSpecs() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
     const R = parseFloat(radius.value);
-    // 오목거울의 실제 곡률 중심: 표면보다 왼쪽에 위치해야 함 (x - R)
     const cx = x - R;
-    const halfAngle = Math.asin(Math.min(1, h / (2 * R)));
+    const sinVal = Math.min(1, h / (2 * R));
+    const halfAngle = Math.asin(sinVal);
     return { cx, cy: axisY, R, startAngle: -halfAngle, endAngle: halfAngle, surfaceX: x };
 }
 
@@ -298,9 +298,9 @@ function getConvexMirrorSpecs() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
     const R = parseFloat(radius.value);
-    // 볼록거울의 실제 곡률 중심: 표면보다 오른쪽에 위치해야 함 (x + R)
     const cx = x + R;
-    const halfAngle = Math.asin(Math.min(1, h / (2 * R)));
+    const sinVal = Math.min(1, h / (2 * R));
+    const halfAngle = Math.asin(sinVal);
     return { cx, cy: axisY, R, startAngle: Math.PI - halfAngle, endAngle: Math.PI + halfAngle, surfaceX: x };
 }
 
@@ -369,11 +369,10 @@ function rayCircleIntersectionStrict(p, d, specs) {
     for (let t of ts) {
         const hit = add(p, mul(d, t));
         const angle = Math.atan2(hit.y - specs.cy, hit.x - specs.cx);
-        // 해당 각도가 거울 아크 범위 내에 있는지 정확히 검증
         let normalizedAngle = angle;
         if (specs.startAngle < 0 && normalizedAngle > Math.PI) normalizedAngle -= 2 * Math.PI;
         
-        if (normalizedAngle >= specs.startAngle - 0.01 && normalizedAngle <= specs.endAngle + 0.01) {
+        if (normalizedAngle >= specs.startAngle - 0.02 && normalizedAngle <= specs.endAngle + 0.02) {
             return { t, point: hit };
         }
     }
@@ -400,7 +399,7 @@ function refract(incident, normal, n1, n2) {
     return { ray: normalize({ x: rx, y: ry }), tir: false };
 }
 
-/* --- 오직 경계면에서만 100% 작동하는 물리 연산 --- */
+/* --- 엄격하고 정밀한 광선 추적 물리 연산 --- */
 function traceRays() {
     const type = objectType.value;
     const ox = objectXPos;
@@ -498,7 +497,6 @@ function traceRays() {
         if (hitResult !== null) {
             const actualHit = hitResult.point;
             drawLine(p, actualHit, "#e53935", 4);
-            // 오목거울 법선 벡터 (중심에서 표면 방향)
             const normal = normalize(sub(actualHit, { x: specs.cx, y: specs.cy }));
             const dotND = dot(d, normal);
             const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
@@ -513,7 +511,6 @@ function traceRays() {
         if (hitResult !== null) {
             const actualHit = hitResult.point;
             drawLine(p, actualHit, "#e53935", 4);
-            // 볼록거울 법선 벡터 (표면에서 중심 방향)
             const normal = normalize(sub({ x: specs.cx, y: specs.cy }, actualHit));
             const dotND = dot(d, normal);
             const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
@@ -566,6 +563,7 @@ function traceRays() {
                 if (edge === matchedEdge) continue;
                 const inter2 = getSegmentIntersection(firstHit.point, rRay1, edge.a, edge.b);
                 if (inter2) {
+                    // 내부에서 지나가는 교차점 중 첫 번째 유효 출사점 찾기
                     if (!secondHit || inter2.t < secondHit.t) {
                         secondHit = inter2;
                         secondFace = edge;
