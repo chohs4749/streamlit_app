@@ -2,341 +2,293 @@ import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 
+# --- 1. Matplotlib 한글 깨짐 방지 설정 ---
+plt.rcParams['font.family'] = 'Malgun Gothic'  # 윈도우 기본 돋움/맑은 고딕
+plt.rcParams['axes.unicode_minus'] = False  # 마이너스 기호 깨짐 방지
+
 # 페이지 설정
 st.set_page_config(
     page_title="물리 광학 발표용 시뮬레이션", page_icon="🔦", layout="wide"
 )
 
-st.title("🔦 레이저의 굴절 및 반사 시뮬레이션")
-st.markdown(
-    "학교 물리 발표용 앱입니다. 사이드바에서 레이저와 광학 도구를 조작하며 빛의 경로를 관찰해보세요!"
-)
+st.title("🔦 레이저 광학 실시간 시뮬레이션")
 
-# --- 사이드바: 조작 패널 ---
-st.sidebar.header("⚙️ 시뮬레이션 설정")
+# --- 사이드바: 조작 패널 (드래그 슬라이더 활용) ---
+st.sidebar.header("🕹️ 조작 제어판")
 
 # 1. 광학 도구 선택
 element_type = st.sidebar.selectbox(
     "광학 도구 선택",
     [
-        "볼록렌즈 (Convex Lens)",
-        "오목렌즈 (Concave Lens)",
-        "평면거울 (Flat Mirror)",
-        "볼록거울 (Convex Mirror)",
-        "오목거울 (Concave Mirror)",
-        "프리즘 (Prism)",
+        "볼록렌즈",
+        "오목렌즈",
+        "평면거울",
+        "볼록거울",
+        "오목거울",
+        "프리즘",
     ],
 )
 
 # 굴절 모델 선택 (렌즈와 프리즘일 때만 활성화)
 refraction_model = "실제 버전 (표면 2회 굴절)"
-if "렌즈" in element_type or "프리즘" in element_type:
+if "렌즈" in element_type or element_type == "프리즘":
   refraction_model = st.sidebar.radio(
-      "굴절 모델 선택",
+      "굴절 방식 선택",
       ["교과서 버전 (중간 1회 굴절)", "실제 버전 (표면 2회 굴절)"],
   )
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("📍 레이저 위치 및 각도 조절")
-laser_x = st.sidebar.slider("레이저 위치 X", -8.0, -2.0, -6.0, 0.1)
-laser_y = st.sidebar.slider("레이저 위치 Y", -3.0, 3.0, 1.0, 0.1)
-laser_angle = st.sidebar.slider(
-    "레이저 각도 (°)", -50.0, 50.0, 0.0, 1.0
-)  # 0도가 수평
+st.sidebar.subheader("🖐️ 레이저 손잡이 조작")
+laser_x = st.sidebar.slider("손잡이 위치 (앞뒤)", -8.0, -3.0, -6.0, 0.1)
+laser_y = st.sidebar.slider("손잡이 높이 (위아래)", -3.0, 3.0, 1.0, 0.1)
+laser_angle = st.sidebar.slider("레이저 발사 각도", -45.0, 45.0, 0.0, 1.0)
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("🔍 광학 도구 설정")
-element_x = st.sidebar.slider("도구 위치 X", -2.0, 2.0, 0.0, 0.1)
-element_thickness = st.sidebar.slider("도구 두께 / 크기", 0.5, 2.5, 1.0, 0.1)
+st.sidebar.subheader("📐 광학 도구 위치 및 크기")
+element_x = st.sidebar.slider("도구 위치 (앞뒤)", -2.0, 2.0, 0.0, 0.1)
+element_size = st.sidebar.slider("도구 두께 및 크기", 0.6, 2.0, 1.0, 0.1)
 
 # --- 메인 플롯 생성 ---
-fig, ax = plt.subplots(figsize=(10, 6))
+fig, ax = plt.subplots(figsize=(10, 5.5))
 ax.set_xlim(-10, 10)
 ax.set_ylim(-5, 5)
-ax.axhline(
-    0, color="gray", linestyle="--", alpha=0.5, label="광축 (Optical Axis)"
-)
+ax.axhline(0, color="gray", linestyle="--", alpha=0.4)
 ax.set_aspect("equal")
-ax.grid(True, alpha=0.3)
+ax.grid(True, alpha=0.2)
+
+# 축 및 레이블 텍스트 정리 (글자 깨짐 방지 적용)
+ax.set_xlabel("광축 거리", fontsize=11)
+ax.set_ylabel("높이", fontsize=11)
 
 # 레이저 방향 벡터 계산
 rad = np.radians(laser_angle)
 dx = np.cos(rad)
 dy = np.sin(rad)
-
-# 레이저 시작점
 lx, ly = laser_x, laser_y
 
 
-# --- 광학 도구 드로잉 및 광선 추적 로직 ---
-def draw_optical_element_and_rays():
-  # 공통 광선 (입사 광선: 레이저 ~ 도구 표면)
-  # 도구의 중심 X 위치 설정
+# --- 광학 도구 및 광선 추적 시각화 함수 ---
+def draw_simulation():
   ex = element_x
 
+  # --- [1] 렌즈 그리기 및 광선 추적 ---
   if "렌즈" in element_type:
-    # 렌즈 그리기
-    half_h = 2.0 * element_thickness
+    h = 2.5 * element_size
+    yy = np.linspace(-h, h, 100)
+
     if "볼록" in element_type:
-      # 볼록렌즈 모양 표현
-      ax.plot(
-          [ex, ex, ex],
-          [-half_h, half_h, -half_h],
-          color="blue",
-          alpha=0.3,
-          linewidth=2,
+      # 실제 볼록렌즈 모양 (가운데가 두껍고 끝이 뾰족)
+      xx_left = ex - 0.3 * element_size * (1 - (yy / h) ** 2)
+      xx_right = ex + 0.3 * element_size * (1 - (yy / h) ** 2)
+      ax.fill_betweenx(
+          yy, xx_left, xx_right, color="dodgerblue", alpha=0.3, label="볼록렌즈"
       )
-      ax.text(
-          ex,
-          half_h + 0.3,
-          element_type,
-          ha="center",
-          fontsize=10,
-          color="blue",
-      )
+      ax.plot(xx_left, yy, color="blue", linewidth=1.5)
+      ax.plot(xx_right, yy, color="blue", linewidth=1.5)
     else:
-      # 오목렌즈 모양 표현
-      ax.plot(
-          [ex - 0.2, ex + 0.2, ex + 0.2, ex - 0.2, ex - 0.2],
-          [-half_h, -half_h + 0.5, half_h - 0.5, half_h, -half_h],
-          color="purple",
-          alpha=0.3,
-          linewidth=2,
+      # 실제 오목렌즈 모양 (가운데가 얇고 끝이 두꺼움)
+      xx_left = ex - 0.3 * element_size * (0.3 + 0.7 * (yy / h) ** 2)
+      xx_right = ex + 0.3 * element_size * (0.3 + 0.7 * (yy / h) ** 2)
+      ax.fill_betweenx(
+          yy, xx_left, xx_right, color="mediumpurple", alpha=0.3, label="오목렌즈"
       )
-      ax.text(
-          ex,
-          half_h + 0.3,
-          element_type,
-          ha="center",
-          fontsize=10,
-          color="purple",
-      )
+      ax.plot(xx_left, yy, color="purple", linewidth=1.5)
+      ax.plot(xx_right, yy, color="purple", linewidth=1.5)
 
-    # 입사 광선 계산 (도구에 닿을 때까지)
-    # y = ly + (dy/dx)*(x - lx) 에서 x = ex 일 때의 y 교점 계산
-    if dx != 0:
-      t = (ex - lx) / dx
-      hit_y = ly + dy * t
-    else:
-      hit_y = ly
-
-    # 입사 광선 실선 표시
-    ax.plot([lx, ex], [ly, hit_y], color="red", linewidth=2, label="입사 레이저")
+    # 입사 광선 계산
+    hit_y = ly + (dy / dx) * (ex - lx) if dx != 0 else ly
+    ax.plot([lx, ex], [ly, hit_y], color="red", linewidth=2.5, label="입사 레이저")
 
     if refraction_model == "교과서 버전 (중간 1회 굴절)":
-      # 교과서 버전: 렌즈 중앙(ex, 0)에서 한번에 꺾이는 것처럼 표현
+      # 교과서식: 렌즈 중심선에서 한번에 꺾임
       ax.plot(
-          [ex, ex], [0, hit_y], color="gray", linestyle=":", label="중심 기준선"
+          [ex, ex],
+          [-h - 0.5, h + 0.5],
+          color="gray",
+          linestyle=":",
+          linewidth=1.5,
+          label="교과서 중심 굴절선",
       )
-      # 굴절 후 방향 계산 (볼록은 모이고, 오목은 퍼짐)
-      focal_length = 3.0 / element_thickness
+
       if "볼록" in element_type:
-        # 초점을 향해 꺾임
-        target_y = -hit_y * (1.0 / focal_length) + hit_y * 0.5
+        exit_slope = -hit_y / (3.0 / element_size)
       else:
-        # 퍼져나감 (가상초점 연장선)
-        target_y = hit_y + hit_y * 0.4
+        exit_slope = hit_y / (3.0 / element_size)
 
-      # 굴절 광선 및 연장선(점선)
       end_x = 10.0
-      end_y = hit_y + (target_y - hit_y) / (end_x - ex) * (end_x - ex)
-      # 간단화된 직진/굴절선
-      slope_out = (
-          -hit_y / 3.0
-          if "볼록" in element_type
-          else hit_y / 3.0 + (hit_y * 0.2)
-      )
-      exit_end_y = hit_y + slope_out * (10.0 - ex)
-
+      end_y = hit_y + exit_slope * (end_x - ex)
       ax.plot(
-          [ex, 10.0],
-          [hit_y, exit_end_y],
-          color="orange",
-          linewidth=2,
+          [ex, end_x],
+          [hit_y, end_y],
+          color="darkorange",
+          linewidth=2.5,
           label="굴절 레이저",
       )
       # 연장선 (점선)
       ax.plot(
           [ex, ex - 4.0],
-          [hit_y, hit_y - slope_out * 4.0],
-          color="orange",
+          [hit_y, hit_y - exit_slope * 4.0],
+          color="darkorange",
           linestyle=":",
           alpha=0.6,
+          label="연장선",
       )
 
     else:
-      # 실제 버전: 첫 번째 표면 굴절 -> 내부 진행 -> 두 번째 표면 굴절
-      front_x = ex - 0.2 * element_thickness
-      back_x = ex + 0.2 * element_thickness
+      # 실제 버전: 표면 2회 굴절
+      front_x = ex - 0.2 * element_size
+      back_x = ex + 0.2 * element_size
+      inside_y = hit_y * 0.85
 
-      # 1번 굴절 (입사면)
-      ax.plot(
-          [lx, front_x],
-          [ly, hit_y],
-          color="red",
-          linewidth=2,
-          label="입사 레이저",
-      )
-      # 내부 진행 (실선 또는 투명선)
-      inside_exit_y = hit_y * 0.8  # 대략적인 내부 굴절
       ax.plot(
           [front_x, back_x],
-          [hit_y, inside_exit_y],
+          [hit_y, inside_y],
           color="magenta",
-          linewidth=1.5,
           linestyle="--",
-          label="내부 경로",
+          linewidth=1.5,
+          label="렌즈 내부 경로",
       )
-      # 2번 굴절 (출사면)
       exit_slope = (
-          -inside_exit_y / 2.5
+          -inside_y / (2.5 / element_size)
           if "볼록" in element_type
-          else inside_exit_y / 2.5
+          else inside_y / (2.5 / element_size)
       )
-      final_end_y = inside_exit_y + exit_slope * (10.0 - back_x)
+      end_x = 10.0
+      end_y = inside_y + exit_slope * (end_x - back_x)
       ax.plot(
-          [back_x, 10.0],
-          [inside_exit_y, final_end_y],
-          color="orange",
-          linewidth=2,
-          label="최종 굴절 레이저",
+          [back_x, end_x],
+          [inside_y, end_y],
+          color="darkorange",
+          linewidth=2.5,
+          label="최종 출사 레이저",
       )
 
+  # --- [2] 거울 그리기 및 반사 추적 ---
   elif "거울" in element_type:
-    # 거울 그리기
-    half_h = 2.0
+    h = 2.5 * element_size
+    yy = np.linspace(-h, h, 100)
+
     if "평면" in element_type:
-      ax.plot(
-          [ex, ex], [-half_h, half_h], color="black", linewidth=4, label="평면거울"
-      )
+      xx = np.full_like(yy, ex)
+      ax.plot(xx, yy, color="black", linewidth=4, label="평면거울")
     elif "볼록" in element_type:
-      yy = np.linspace(-half_h, half_h, 100)
-      xx = ex - 0.3 * (yy / half_h) ** 2
-      ax.plot(xx, yy, color="darkgreen", linewidth=3, label="볼록거울")
+      xx = ex - 0.4 * element_size * (yy / h) ** 2
+      ax.plot(xx, yy, color="forestgreen", linewidth=3.5, label="볼록거울")
     else:  # 오목거울
-      yy = np.linspace(-half_h, half_h, 100)
-      xx = ex + 0.3 * (yy / half_h) ** 2
-      ax.plot(xx, yy, color="darkred", linewidth=3, label="오목거울")
+      xx = ex + 0.4 * element_size * (yy / h) ** 2
+      ax.plot(xx, yy, color="firebrick", linewidth=3.5, label="오목거울")
+
+    hit_y = ly + (dy / dx) * (ex - lx) if dx != 0 else ly
+    ax.plot([lx, ex], [ly, hit_y], color="red", linewidth=2.5, label="입사 레이저")
 
     # 반사 계산
-    if dx != 0:
-      t = (ex - lx) / dx
-      hit_y = ly + dy * t
-    else:
-      hit_y = ly
-
-    ax.plot([lx, ex], [ly, hit_y], color="red", linewidth=2, label="입사 레이저")
-
-    # 반사각 계산 (법선 반사 법칙 적용)
     refl_dx = -dx
     refl_dy = dy
     if "볼록" in element_type:
-      refl_dy += 0.1 * hit_y
+      refl_dy += 0.15 * hit_y
     elif "오목" in element_type:
-      refl_dy -= 0.1 * hit_y
+      refl_dy -= 0.15 * hit_y
 
-    end_x = -10.0  
+    end_x = -10.0
     end_y = hit_y + (refl_dy / (refl_dx if refl_dx != 0 else 0.001)) * (
         end_x - ex
     )
     ax.plot(
         [ex, end_x],
         [hit_y, end_y],
-        color="orange",
-        linewidth=2,
+        color="darkorange",
+        linewidth=2.5,
         label="반사 레이저",
     )
     # 반사 연장선 (점선)
     ax.plot(
-        [ex, ex + 5.0],
-        [hit_y, hit_y - (end_y - hit_y) * 5 / (end_x - ex)],
-        color="orange",
+        [ex, ex + 6.0],
+        [hit_y, hit_y - (end_y - hit_y) * 6 / (end_x - ex)],
+        color="darkorange",
         linestyle=":",
         alpha=0.6,
         label="반사 연장선",
     )
 
-  elif "프리즘" in element_type:
-    # 프리즘 (삼각형) 그리기
-    p_bottom = ex - 1.0
-    p_top = ex + 1.0
-    triangle_x = [p_bottom, ex, p_top, p_bottom]
-    triangle_y = [-1.5, 1.5, -1.5, -1.5]
+  # --- [3] 프리즘 그리기 및 굴절 추적 ---
+  elif element_type == "프리즘":
+    sz = 1.5 * element_size
+    tri_x = [ex - sz, ex, ex + sz, ex - sz]
+    tri_y = [-sz, sz, -sz, -sz]
     ax.plot(
-        triangle_x,
-        triangle_y,
+        tri_x,
+        tri_y,
         color="teal",
         linewidth=2,
         label="삼각 프리즘",
     )
+    ax.fill(tri_x, tri_y, color="teal", alpha=0.15)
 
-    hit_y = 0.0  # 프리즘 입사 지점 간소화
-    ax.plot(
-        [lx, ex - 0.5],
-        [ly, hit_y],
-        color="red",
-        linewidth=2,
-        label="입사 레이저",
-    )
+    hit_y = 0.0
+    ax.plot([lx, ex - sz * 0.5], [ly, hit_y], color="red", linewidth=2.5, label="입사 레이저")
 
     if refraction_model == "교과서 버전 (중간 1회 굴절)":
       ax.plot(
           [ex, ex],
-          [-1.5, 1.5],
+          [-sz, sz],
           color="gray",
           linestyle=":",
-          label="중심 굴절선",
+          linewidth=1.5,
+          label="교과서 중심 굴절선",
       )
       ax.plot(
           [ex, 10.0],
-          [hit_y, hit_y - 2.5],
-          color="orange",
-          linewidth=2,
+          [hit_y, hit_y - 3.0],
+          color="darkorange",
+          linewidth=2.5,
           label="굴절/분산 레이저",
       )
     else:
-      # 실제 2회 굴절 (입사 -> 출사)
       ax.plot(
-          [ex - 0.5, ex + 0.5],
+          [ex - sz * 0.5, ex + sz * 0.3],
           [hit_y, hit_y - 0.5],
           color="magenta",
           linestyle="--",
+          linewidth=1.5,
           label="프리즘 내부 경로",
       )
       ax.plot(
-          [ex + 0.5, 10.0],
-          [hit_y - 0.5, hit_y - 3.0],
-          color="orange",
-          linewidth=2,
+          [ex + sz * 0.3, 10.0],
+          [hit_y - 0.5, hit_y - 3.5],
+          color="darkorange",
+          linewidth=2.5,
           label="최종 출사 레이저",
       )
 
 
-# 광선 그리기 실행
-draw_optical_element_and_rays()
+# 시뮬레이션 드로잉 실행
+draw_simulation()
 
-# 레이저 손잡이(광원 위치) 마커 표시
+# 레이저가 나오는 손잡이(광원) 표시
 ax.plot(
     laser_x,
     laser_y,
     marker="o",
-    markersize=12,
-    color="red",
-    label="레이저 광원 (손잡이)",
+    markersize=14,
+    color="crimson",
+    markeredgecolor="black",
+    label="레이저 손잡이",
+)
+ax.text(
+    laser_x,
+    laser_y + 0.35,
+    "레이저 손잡이",
+    color="crimson",
+    fontsize=10,
+    fontweight="bold",
+    ha="center",
 )
 
-# 그래프 꾸미기
+# 그래프 레이아웃 설정
 ax.set_title(
-    f"현재 선택: {element_type} ({refraction_model})", fontsize=12, fontweight="bold"
+    f"선택 도구: [{element_type}]", fontsize=13, fontweight="bold", pad=15
 )
-ax.set_xlabel("X 위치")
-ax.set_ylabel("Y 위치")
 ax.legend(loc="upper right", fontsize=9)
 
-# 스트림릿에 그래프 출력
+# 스트림릿 웹 화면에 출력
 st.pyplot(fig)
-
-# --- 발표 팁 안내 ---
-st.info(
-    "💡 **발표 팁:** 사이드바의 **'레이저 위치 및 각도'** 슬라이더를 좌우로 움직여 보면 손잡이를 드래그하는 것처럼 실시간으로 빛의 경로가 바뀌는 것을 보여줄 수 있습니다!"
-)
