@@ -180,11 +180,13 @@ function add(a,b) { return { x:a.x+b.x, y:a.y+b.y }; }
 function sub(a,b) { return { x:a.x-b.x, y:a.y-b.y }; }
 function mul(a,k) { return { x:a.x*k, y:a.y*k }; }
 function length(a) { return Math.sqrt(a.x*a.x + a.y*a.y); }
+
 function normalize(a) {
     const l = length(a);
     if(l === 0) return { x:1, y:0 };
     return { x:a.x/l, y:a.y/l };
 }
+
 function dot(a, b) { return a.x*b.x + a.y*b.y; }
 
 function drawLine(p1, p2, color="#e53935", width=4, dashed=false) {
@@ -215,6 +217,7 @@ function getCanvasMousePos(e) {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
+
     return {
         x: (e.clientX - rect.left) * scaleX,
         y: (e.clientY - rect.top) * scaleY
@@ -231,7 +234,14 @@ function drawLaserAndHandle() {
     ctx.stroke();
 
     const lHandle = laserHandlePos();
-    drawLine({x: laser.x, y: laser.y}, lHandle, "#fbc02d", 12);
+
+    drawLine(
+        {x: laser.x, y: laser.y},
+        lHandle,
+        "#fbc02d",
+        12
+    );
+
     ctx.beginPath();
     ctx.arc(lHandle.x, lHandle.y, 14, 0, Math.PI*2);
     ctx.fillStyle = "#ffdf3f";
@@ -239,7 +249,14 @@ function drawLaserAndHandle() {
     ctx.strokeStyle = "#806000";
     ctx.lineWidth = 2;
     ctx.stroke();
-    drawText("레이저", lHandle.x - 22, lHandle.y - 20, 11, "#555");
+
+    drawText(
+        "레이저",
+        lHandle.x - 22,
+        lHandle.y - 20,
+        11,
+        "#555"
+    );
 
     ctx.beginPath();
     ctx.arc(laser.x, laser.y, 7, 0, Math.PI*2);
@@ -248,8 +265,21 @@ function drawLaserAndHandle() {
 }
 
 function drawAxis() {
-    drawLine({x: 30, y: axisY}, {x: 1070, y: axisY}, "#aaa", 1, true);
-    drawText("광축", 1015, axisY - 10, 13, "#888");
+    drawLine(
+        {x: 30, y: axisY},
+        {x: 1070, y: axisY},
+        "#aaa",
+        1,
+        true
+    );
+
+    drawText(
+        "광축",
+        1015,
+        axisY - 10,
+        13,
+        "#888"
+    );
 }
 
 /* --- 렌즈 기하학 스펙 --- */
@@ -257,18 +287,43 @@ function getLensGeometry() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
     const th = parseFloat(lensThickness.value);
-    const R = ( (h/2)*(h/2) + (th/2)*(th/2) ) / th;
+
+    const R =
+        (
+            (h/2)*(h/2) +
+            (th/2)*(th/2)
+        ) / th;
+
     return { x, h, th, R };
 }
 
 function drawConvexLens() {
     const g = getLensGeometry();
+
     ctx.beginPath();
-    ctx.moveTo(g.x - g.th/2, axisY - g.h/2);
-    ctx.quadraticCurveTo(g.x + g.th/2, axisY, g.x - g.th/2, axisY + g.h/2);
-    ctx.quadraticCurveTo(g.x - g.th*1.5, axisY, g.x - g.th/2, axisY - g.h/2);
+
+    ctx.moveTo(
+        g.x - g.th/2,
+        axisY - g.h/2
+    );
+
+    ctx.quadraticCurveTo(
+        g.x + g.th/2,
+        axisY,
+        g.x - g.th/2,
+        axisY + g.h/2
+    );
+
+    ctx.quadraticCurveTo(
+        g.x - g.th*1.5,
+        axisY,
+        g.x - g.th/2,
+        axisY - g.h/2
+    );
+
     ctx.fillStyle = "rgba(100, 200, 255, 0.35)";
     ctx.fill();
+
     ctx.strokeStyle = "#0288d1";
     ctx.lineWidth = 3;
     ctx.stroke();
@@ -276,14 +331,41 @@ function drawConvexLens() {
 
 function drawConcaveLens() {
     const g = getLensGeometry();
+
     ctx.beginPath();
-    ctx.moveTo(g.x - g.th*1.2, axisY - g.h/2);
-    ctx.lineTo(g.x + g.th*0.3, axisY - g.h/2);
-    ctx.quadraticCurveTo(g.x - g.th*0.5, axisY, g.x + g.th*0.3, axisY + g.h/2);
-    ctx.lineTo(g.x - g.th*1.2, axisY + g.h/2);
-    ctx.quadraticCurveTo(g.x - g.th*0.5, axisY, g.x - g.th*1.2, axisY - g.h/2);
+
+    ctx.moveTo(
+        g.x - g.th*1.2,
+        axisY - g.h/2
+    );
+
+    ctx.lineTo(
+        g.x + g.th*0.3,
+        axisY - g.h/2
+    );
+
+    ctx.quadraticCurveTo(
+        g.x - g.th*0.5,
+        axisY,
+        g.x + g.th*0.3,
+        axisY + g.h/2
+    );
+
+    ctx.lineTo(
+        g.x - g.th*1.2,
+        axisY + g.h/2
+    );
+
+    ctx.quadraticCurveTo(
+        g.x - g.th*0.5,
+        axisY,
+        g.x - g.th*1.2,
+        axisY - g.h/2
+    );
+
     ctx.fillStyle = "rgba(100, 200, 255, 0.35)";
     ctx.fill();
+
     ctx.strokeStyle = "#0288d1";
     ctx.lineWidth = 3;
     ctx.stroke();
@@ -292,9 +374,25 @@ function drawConcaveLens() {
 function drawPlaneMirror() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
-    drawLine({x: x, y: axisY - h/2}, {x: x, y: axisY + h/2}, "#37474f", 5);
-    for(let y = axisY - h/2 + 10; y < axisY + h/2; y += 15) {
-        drawLine({x: x, y: y}, {x: x + 10, y: y + 10}, "#78909c", 2);
+
+    drawLine(
+        {x: x, y: axisY - h/2},
+        {x: x, y: axisY + h/2},
+        "#37474f",
+        5
+    );
+
+    for(
+        let y = axisY - h/2 + 10;
+        y < axisY + h/2;
+        y += 15
+    ) {
+        drawLine(
+            {x: x, y: y},
+            {x: x + 10, y: y + 10},
+            "#78909c",
+            2
+        );
     }
 }
 
@@ -303,9 +401,22 @@ function getConcaveMirrorSpecs() {
     const h = parseFloat(deviceSize.value);
     const R = parseFloat(radius.value);
     const cx = x - R;
-    const sinVal = Math.min(1, h / (2 * R));
+
+    const sinVal = Math.min(
+        1,
+        h / (2 * R)
+    );
+
     const halfAngle = Math.asin(sinVal);
-    return { cx, cy: axisY, R, startAngle: -halfAngle, endAngle: halfAngle, surfaceX: x };
+
+    return {
+        cx,
+        cy: axisY,
+        R,
+        startAngle: -halfAngle,
+        endAngle: halfAngle,
+        surfaceX: x
+    };
 }
 
 function getConvexMirrorSpecs() {
@@ -313,15 +424,37 @@ function getConvexMirrorSpecs() {
     const h = parseFloat(deviceSize.value);
     const R = parseFloat(radius.value);
     const cx = x + R;
-    const sinVal = Math.min(1, h / (2 * R));
+
+    const sinVal = Math.min(
+        1,
+        h / (2 * R)
+    );
+
     const halfAngle = Math.asin(sinVal);
-    return { cx, cy: axisY, R, startAngle: Math.PI - halfAngle, endAngle: Math.PI + halfAngle, surfaceX: x };
+
+    return {
+        cx,
+        cy: axisY,
+        R,
+        startAngle: Math.PI - halfAngle,
+        endAngle: Math.PI + halfAngle,
+        surfaceX: x
+    };
 }
 
 function drawConcaveMirror() {
     const specs = getConcaveMirrorSpecs();
+
     ctx.beginPath();
-    ctx.arc(specs.cx, specs.cy, specs.R, specs.startAngle, specs.endAngle);
+
+    ctx.arc(
+        specs.cx,
+        specs.cy,
+        specs.R,
+        specs.startAngle,
+        specs.endAngle
+    );
+
     ctx.strokeStyle = "#37474f";
     ctx.lineWidth = 5;
     ctx.stroke();
@@ -329,8 +462,17 @@ function drawConcaveMirror() {
 
 function drawConvexMirror() {
     const specs = getConvexMirrorSpecs();
+
     ctx.beginPath();
-    ctx.arc(specs.cx, specs.cy, specs.R, specs.startAngle, specs.endAngle);
+
+    ctx.arc(
+        specs.cx,
+        specs.cy,
+        specs.R,
+        specs.startAngle,
+        specs.endAngle
+    );
+
     ctx.strokeStyle = "#37474f";
     ctx.lineWidth = 5;
     ctx.stroke();
@@ -338,16 +480,41 @@ function drawConvexMirror() {
 
 function drawPrism() {
     const x = objectXPos;
-    const A = parseFloat(prismAngle.value) * Math.PI / 180;
-    const base = parseFloat(deviceSize.value);
-    const height = base / (2 * Math.tan(A / 2));
+    const A =
+        parseFloat(prismAngle.value) *
+        Math.PI / 180;
+
+    const base =
+        parseFloat(deviceSize.value);
+
+    const height =
+        base /
+        (2 * Math.tan(A / 2));
+
     ctx.beginPath();
-    ctx.moveTo(x - base / 2, axisY + height / 2);
-    ctx.lineTo(x, axisY - height / 2);
-    ctx.lineTo(x + base / 2, axisY + height / 2);
+
+    ctx.moveTo(
+        x - base / 2,
+        axisY + height / 2
+    );
+
+    ctx.lineTo(
+        x,
+        axisY - height / 2
+    );
+
+    ctx.lineTo(
+        x + base / 2,
+        axisY + height / 2
+    );
+
     ctx.closePath();
-    ctx.fillStyle = "rgba(100, 200, 255, 0.3)";
+
+    ctx.fillStyle =
+        "rgba(100, 200, 255, 0.3)";
+
     ctx.fill();
+
     ctx.strokeStyle = "#0288d1";
     ctx.lineWidth = 4;
     ctx.stroke();
@@ -355,69 +522,193 @@ function drawPrism() {
 
 function getSegmentIntersection(p, d, a, b) {
     const v = sub(b, a);
-    const cross = d.x * (-v.y) - d.y * (-v.x);
-    if (Math.abs(cross) < 1e-6) return null;
+
+    const cross =
+        d.x * (-v.y) -
+        d.y * (-v.x);
+
+    if (Math.abs(cross) < 1e-6)
+        return null;
+
     const ap = sub(a, p);
-    const t = (ap.x * (-v.y) - ap.y * (-v.x)) / cross;
-    const s = (d.x * ap.y - d.y * ap.x) / cross;
-    if (t > 1e-4 && s >= 0 && s <= 1) {
-        return { t, s, point: add(p, mul(d, t)) };
+
+    const t =
+        (
+            ap.x * (-v.y) -
+            ap.y * (-v.x)
+        ) / cross;
+
+    const s =
+        (
+            d.x * ap.y -
+            d.y * ap.x
+        ) / cross;
+
+    if (
+        t > 1e-4 &&
+        s >= 0 &&
+        s <= 1
+    ) {
+        return {
+            t,
+            s,
+            point: add(p, mul(d, t))
+        };
     }
+
     return null;
 }
 
 function rayCircleIntersectionStrict(p, d, specs) {
-    const L = sub(p, { x: specs.cx, y: specs.cy });
+    const L = sub(
+        p,
+        {
+            x: specs.cx,
+            y: specs.cy
+        }
+    );
+
     const A = 1;
     const B = 2 * dot(L, d);
-    const C = dot(L, L) - specs.R * specs.R;
-    const disc = B * B - 4 * A * C;
-    if (disc < 0) return null;
-    
-    const t1 = (-B - Math.sqrt(disc)) / (2 * A);
-    const t2 = (-B + Math.sqrt(disc)) / (2 * A);
-    let ts = [t1, t2].filter(t => t > 1e-4);
-    if (ts.length === 0) return null;
+
+    const C =
+        dot(L, L) -
+        specs.R * specs.R;
+
+    const disc =
+        B * B -
+        4 * A * C;
+
+    if (disc < 0)
+        return null;
+
+    const t1 =
+        (-B - Math.sqrt(disc)) /
+        (2 * A);
+
+    const t2 =
+        (-B + Math.sqrt(disc)) /
+        (2 * A);
+
+    let ts = [t1, t2]
+        .filter(t => t > 1e-4);
+
+    if (ts.length === 0)
+        return null;
+
     ts.sort((a,b) => a - b);
 
     for (let t of ts) {
-        const hit = add(p, mul(d, t));
-        const angle = Math.atan2(hit.y - specs.cy, hit.x - specs.cx);
+        const hit =
+            add(p, mul(d, t));
+
+        const angle =
+            Math.atan2(
+                hit.y - specs.cy,
+                hit.x - specs.cx
+            );
+
         let sa = specs.startAngle;
         let ea = specs.endAngle;
         let ang = angle;
-        if (ang < 0) ang += Math.PI * 2;
-        if (sa < 0) sa += Math.PI * 2;
-        if (ea < 0) ea += Math.PI * 2;
+
+        if (ang < 0)
+            ang += Math.PI * 2;
+
+        if (sa < 0)
+            sa += Math.PI * 2;
+
+        if (ea < 0)
+            ea += Math.PI * 2;
+
         if (sa > ea) {
-            if (ang >= sa || ang <= ea) return { t, point: hit };
-        } else {
-            if (ang >= sa && ang <= ea) return { t, point: hit };
+            if (
+                ang >= sa ||
+                ang <= ea
+            ) {
+                return {
+                    t,
+                    point: hit
+                };
+            }
+        }
+        else {
+            if (
+                ang >= sa &&
+                ang <= ea
+            ) {
+                return {
+                    t,
+                    point: hit
+                };
+            }
         }
     }
+
     return null;
 }
 
-function rayLensSurfaceIntersection(p, d, circleX, circleY, R, hLimit) {
-    const L = sub(p, { x: circleX, y: circleY });
+function rayLensSurfaceIntersection(
+    p,
+    d,
+    circleX,
+    circleY,
+    R,
+    hLimit
+) {
+    const L = sub(
+        p,
+        {
+            x: circleX,
+            y: circleY
+        }
+    );
+
     const A = 1;
     const B = 2 * dot(L, d);
-    const C = dot(L, L) - R * R;
-    const disc = B * B - 4 * A * C;
-    if (disc < 0) return null;
 
-    const t1 = (-B - Math.sqrt(disc)) / (2 * A);
-    const t2 = (-B + Math.sqrt(disc)) / (2 * A);
-    let ts = [t1, t2].filter(t => t > 1e-4);
-    if (ts.length === 0) return null;
+    const C =
+        dot(L, L) -
+        R * R;
+
+    const disc =
+        B * B -
+        4 * A * C;
+
+    if (disc < 0)
+        return null;
+
+    const t1 =
+        (-B - Math.sqrt(disc)) /
+        (2 * A);
+
+    const t2 =
+        (-B + Math.sqrt(disc)) /
+        (2 * A);
+
+    let ts = [t1, t2]
+        .filter(t => t > 1e-4);
+
+    if (ts.length === 0)
+        return null;
+
     ts.sort((a,b) => a - b);
 
     for (let t of ts) {
-        const hit = add(p, mul(d, t));
-        if (Math.abs(hit.y - axisY) <= hLimit) {
-            return { t, point: hit };
+        const hit =
+            add(p, mul(d, t));
+
+        if (
+            Math.abs(hit.y - axisY)
+            <= hLimit
+        ) {
+            return {
+                t,
+                point: hit
+            };
         }
     }
+
     return null;
 }
 
@@ -425,206 +716,424 @@ function rayLensSurfaceIntersection(p, d, circleX, circleY, R, hLimit) {
 function traceRays() {
     const type = objectType.value;
     const ox = objectXPos;
-    const p = { x: laser.x, y: laser.y };
-    const d = normalize({ x: Math.cos(laser.angle), y: Math.sin(laser.angle) });
-    const hLimit = parseFloat(deviceSize.value) / 2;
+
+    const p = {
+        x: laser.x,
+        y: laser.y
+    };
+
+    const d = normalize({
+        x: Math.cos(laser.angle),
+        y: Math.sin(laser.angle)
+    });
+
+    const hLimit =
+        parseFloat(deviceSize.value) / 2;
 
     if (Math.abs(d.x) < 1e-5) {
-        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+        drawLine(
+            p,
+            add(p, mul(d, 1000)),
+            "#e53935",
+            4
+        );
         return;
     }
 
-    drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
+    drawLine(
+        p,
+        add(p, mul(d, 1000)),
+        "#ff9800",
+        2,
+        true
+    );
 
     if (type === "convexLens") {
         const g = getLensGeometry();
-        const frontCx = g.x + g.th/2 - g.R;
-        const backCx = g.x - g.th/2 + g.R;
 
-        const rayCount = 7;
-        const raySpacing = (hLimit * 1.7) / (rayCount - 1);
+        const frontCx =
+            g.x + g.th/2 - g.R;
 
-        // 볼록렌즈의 초점거리
-        const f = g.R / 2;
+        const backCx =
+            g.x - g.th/2 + g.R;
 
-        // 레이저의 발사 방향에 따라 모든 광선이 모이는 한 점
-        const cosA = Math.max(0.2, Math.abs(d.x));
-        const focus = {
-            x: g.x + f / cosA,
-            y: axisY + f * (d.y / cosA)
-        };
-
-        for (let i = 0; i < rayCount; i++) {
-            const rayY = axisY - hLimit * 0.85 + i * raySpacing;
-            const rayStart = { x: laser.x, y: rayY };
-
-            const hitInRes = rayLensSurfaceIntersection(
-                rayStart, d, frontCx, axisY, g.R, hLimit
+        const hitInRes =
+            rayLensSurfaceIntersection(
+                p,
+                d,
+                frontCx,
+                axisY,
+                g.R,
+                hLimit
             );
 
-            const hitOutRes = rayLensSurfaceIntersection(
-                rayStart, d, backCx, axisY, g.R, hLimit
+        const hitOutRes =
+            rayLensSurfaceIntersection(
+                p,
+                d,
+                backCx,
+                axisY,
+                g.R,
+                hLimit
             );
 
-            if (hitInRes && hitOutRes) {
-                const hitIn = hitInRes.point;
-                const hitOut = hitOutRes.point;
+        if (hitInRes && hitOutRes) {
+            const hitIn =
+                hitInRes.point;
 
-                // 렌즈까지 들어가는 광선
-                drawLine(rayStart, hitIn, "#e53935", 4);
+            const hitOut =
+                hitOutRes.point;
 
-                // 렌즈 내부를 지나가는 광선
-                drawLine(hitIn, hitOut, "#e53935", 4);
+            // 레이저 한 줄기만 렌즈까지 진행
+            drawLine(
+                p,
+                hitIn,
+                "#e53935",
+                4
+            );
 
-                // 볼록렌즈를 통과한 광선이 한 점으로 수렴
-                drawLine(hitOut, focus, "#e53935", 4);
-            }
+            // 렌즈 내부
+            drawLine(
+                hitIn,
+                hitOut,
+                "#e53935",
+                4
+            );
+
+            // 볼록렌즈의 초점
+            const f = g.R / 2;
+
+            const focus = {
+                x: g.x + f,
+                y: axisY
+            };
+
+            // 볼록렌즈를 통과한 한 줄기의 빛이 초점으로 수렴
+            drawLine(
+                hitOut,
+                focus,
+                "#e53935",
+                4
+            );
+
+            return;
         }
-        return;
+
+        drawLine(
+            p,
+            add(p, mul(d, 1000)),
+            "#e53935",
+            4
+        );
     }
+
     else if (type === "concaveLens") {
         const g = getLensGeometry();
-        const frontCx = g.x - g.th/2 + g.R;
-        const backCx = g.x + g.th/2 - g.R;
 
-        const rayCount = 7;
-        const raySpacing = (hLimit * 1.7) / (rayCount - 1);
+        const frontCx =
+            g.x - g.th/2 + g.R;
 
-        // 오목렌즈의 초점거리
-        const f = g.R / 2;
+        const backCx =
+            g.x + g.th/2 - g.R;
 
-        // 발산한 광선을 뒤로 연장했을 때 만나는 가상 초점
-        const cosA = Math.max(0.2, Math.abs(d.x));
-        const virtualFocus = {
-            x: g.x - f / cosA,
-            y: axisY + f * (d.y / cosA)
-        };
-
-        for (let i = 0; i < rayCount; i++) {
-            const rayY = axisY - hLimit * 0.85 + i * raySpacing;
-            const rayStart = { x: laser.x, y: rayY };
-
-            const hitInRes = rayLensSurfaceIntersection(
-                rayStart, d, frontCx, axisY, g.R, hLimit
+        const hitInRes =
+            rayLensSurfaceIntersection(
+                p,
+                d,
+                frontCx,
+                axisY,
+                g.R,
+                hLimit
             );
 
-            const hitOutRes = rayLensSurfaceIntersection(
-                rayStart, d, backCx, axisY, g.R, hLimit
+        const hitOutRes =
+            rayLensSurfaceIntersection(
+                p,
+                d,
+                backCx,
+                axisY,
+                g.R,
+                hLimit
             );
 
-            if (hitInRes && hitOutRes) {
-                const hitIn = hitInRes.point;
-                const hitOut = hitOutRes.point;
+        if (hitInRes && hitOutRes) {
+            const hitIn =
+                hitInRes.point;
 
-                // 렌즈까지 들어가는 광선
-                drawLine(rayStart, hitIn, "#e53935", 4);
+            const hitOut =
+                hitOutRes.point;
 
-                // 렌즈 내부를 지나가는 광선
-                drawLine(hitIn, hitOut, "#e53935", 4);
+            // 레이저 한 줄기만 렌즈까지 진행
+            drawLine(
+                p,
+                hitIn,
+                "#e53935",
+                4
+            );
 
-                // 오목렌즈를 통과한 광선이 바깥쪽으로 발산
-                const finalRay = normalize(sub(hitOut, virtualFocus));
-                drawLine(
-                    hitOut,
-                    add(hitOut, mul(finalRay, 800)),
-                    "#e53935",
-                    4
+            // 렌즈 내부
+            drawLine(
+                hitIn,
+                hitOut,
+                "#e53935",
+                4
+            );
+
+            // 오목렌즈의 가상 초점
+            const f = g.R / 2;
+
+            const virtualFocus = {
+                x: g.x - f,
+                y: axisY
+            };
+
+            // 가상 초점에서 출발하는 것처럼 발산
+            const finalRay =
+                normalize(
+                    sub(
+                        hitOut,
+                        virtualFocus
+                    )
                 );
 
-                // 발산한 광선을 반대 방향으로 연장한 가상 초점
-                drawLine(
-                    virtualFocus,
+            drawLine(
+                hitOut,
+                add(
                     hitOut,
-                    "#ff9800",
-                    2,
-                    true
-                );
-            }
+                    mul(finalRay, 800)
+                ),
+                "#e53935",
+                4
+            );
+
+            // 발산한 광선을 뒤로 연장한 가상 경로
+            drawLine(
+                virtualFocus,
+                hitOut,
+                "#ff9800",
+                2,
+                true
+            );
+
+            return;
         }
-        return;
+
+        drawLine(
+            p,
+            add(p, mul(d, 1000)),
+            "#e53935",
+            4
+        );
     }
+
     else if (type === "planeMirror") {
-        const t = (ox - p.x) / d.x;
-        const hitPoint = add(p, mul(d, t));
-        if (t > 1e-4 && Math.abs(hitPoint.y - axisY) <= hLimit) {
-            drawLine(p, hitPoint, "#e53935", 4);
-            const n = { x: -1, y: 0 };
+        const t =
+            (ox - p.x) / d.x;
+
+        const hitPoint =
+            add(p, mul(d, t));
+
+        if (
+            t > 1e-4 &&
+            Math.abs(hitPoint.y - axisY)
+            <= hLimit
+        ) {
+            drawLine(
+                p,
+                hitPoint,
+                "#e53935",
+                4
+            );
+
+            const n = {
+                x: -1,
+                y: 0
+            };
+
             const dotND = dot(d, n);
+
             const outDir = {
                 x: d.x - 2 * dotND * n.x,
                 y: d.y - 2 * dotND * n.y
             };
+
             drawLine(
                 hitPoint,
-                add(hitPoint, mul(outDir, 800)),
+                add(
+                    hitPoint,
+                    mul(outDir, 800)
+                ),
                 "#e53935",
                 4
             );
+
             return;
         }
-        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+
+        drawLine(
+            p,
+            add(p, mul(d, 1000)),
+            "#e53935",
+            4
+        );
     }
+
     else if (type === "concaveMirror") {
-        const specs = getConcaveMirrorSpecs();
-        const hitResult = rayCircleIntersectionStrict(p, d, specs);
-        if (hitResult !== null) {
-            const actualHit = hitResult.point;
-            drawLine(p, actualHit, "#e53935", 4);
-            const normal = normalize(
-                sub(actualHit, { x: specs.cx, y: specs.cy })
+        const specs =
+            getConcaveMirrorSpecs();
+
+        const hitResult =
+            rayCircleIntersectionStrict(
+                p,
+                d,
+                specs
             );
-            const dotND = dot(d, normal);
-            const outDir = {
-                x: d.x - 2 * dotND * normal.x,
-                y: d.y - 2 * dotND * normal.y
-            };
+
+        if (hitResult !== null) {
+            const actualHit =
+                hitResult.point;
+
             drawLine(
+                p,
                 actualHit,
-                add(actualHit, mul(outDir, 800)),
                 "#e53935",
                 4
             );
+
+            const normal =
+                normalize(
+                    sub(
+                        actualHit,
+                        {
+                            x: specs.cx,
+                            y: specs.cy
+                        }
+                    )
+                );
+
+            const dotND =
+                dot(d, normal);
+
+            const outDir = {
+                x:
+                    d.x -
+                    2 * dotND * normal.x,
+
+                y:
+                    d.y -
+                    2 * dotND * normal.y
+            };
+
+            drawLine(
+                actualHit,
+                add(
+                    actualHit,
+                    mul(outDir, 800)
+                ),
+                "#e53935",
+                4
+            );
+
             return;
         }
-        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+
+        drawLine(
+            p,
+            add(p, mul(d, 1000)),
+            "#e53935",
+            4
+        );
     }
+
     else if (type === "convexMirror") {
-        const specs = getConvexMirrorSpecs();
-        const hitResult = rayCircleIntersectionStrict(p, d, specs);
-        if (hitResult !== null) {
-            const actualHit = hitResult.point;
-            drawLine(p, actualHit, "#e53935", 4);
-            const normal = normalize(
-                sub({ x: specs.cx, y: specs.cy }, actualHit)
+        const specs =
+            getConvexMirrorSpecs();
+
+        const hitResult =
+            rayCircleIntersectionStrict(
+                p,
+                d,
+                specs
             );
-            const dotND = dot(d, normal);
-            const outDir = {
-                x: d.x - 2 * dotND * normal.x,
-                y: d.y - 2 * dotND * normal.y
-            };
+
+        if (hitResult !== null) {
+            const actualHit =
+                hitResult.point;
+
             drawLine(
+                p,
                 actualHit,
-                add(actualHit, mul(outDir, 800)),
                 "#e53935",
                 4
             );
+
+            const normal =
+                normalize(
+                    sub(
+                        {
+                            x: specs.cx,
+                            y: specs.cy
+                        },
+                        actualHit
+                    )
+                );
+
+            const dotND =
+                dot(d, normal);
+
+            const outDir = {
+                x:
+                    d.x -
+                    2 * dotND * normal.x,
+
+                y:
+                    d.y -
+                    2 * dotND * normal.y
+            };
+
+            drawLine(
+                actualHit,
+                add(
+                    actualHit,
+                    mul(outDir, 800)
+                ),
+                "#e53935",
+                4
+            );
+
             return;
         }
-        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+
+        drawLine(
+            p,
+            add(p, mul(d, 1000)),
+            "#e53935",
+            4
+        );
     }
+
     else if (type === "prism") {
-        const A = parseFloat(prismAngle.value) * Math.PI / 180;
-        const base = parseFloat(deviceSize.value);
-        const height = base / (2 * Math.tan(A / 2));
-        
+        const A =
+            parseFloat(prismAngle.value) *
+            Math.PI / 180;
+
+        const base =
+            parseFloat(deviceSize.value);
+
+        const height =
+            base /
+            (2 * Math.tan(A / 2));
+
         const Vbl = {
             x: ox - base / 2,
             y: axisY + height / 2
         };
+
         const Vtop = {
             x: ox,
             y: axisY - height / 2
         };
+
         const Vbr = {
             x: ox + base / 2,
             y: axisY + height / 2
@@ -640,9 +1149,19 @@ function traceRays() {
         let matchedEdge = null;
 
         for (let edge of edges) {
-            const inter = getSegmentIntersection(p, d, edge.a, edge.b);
+            const inter =
+                getSegmentIntersection(
+                    p,
+                    d,
+                    edge.a,
+                    edge.b
+                );
+
             if (inter) {
-                if (!firstHit || inter.t < firstHit.t) {
+                if (
+                    !firstHit ||
+                    inter.t < firstHit.t
+                ) {
                     firstHit = inter;
                     matchedEdge = edge;
                 }
@@ -650,13 +1169,24 @@ function traceRays() {
         }
 
         if (firstHit && matchedEdge) {
-            drawLine(p, firstHit.point, "#e53935", 4);
-            
-            const vFace1 = sub(matchedEdge.b, matchedEdge.a);
-            let normal1 = normalize({
-                x: -vFace1.y,
-                y: vFace1.x
-            });
+            drawLine(
+                p,
+                firstHit.point,
+                "#e53935",
+                4
+            );
+
+            const vFace1 =
+                sub(
+                    matchedEdge.b,
+                    matchedEdge.a
+                );
+
+            let normal1 =
+                normalize({
+                    x: -vFace1.y,
+                    y: vFace1.x
+                });
 
             if (dot(d, normal1) > 0)
                 normal1 = {
@@ -664,31 +1194,46 @@ function traceRays() {
                     y: -normal1.y
                 };
 
-            const ref1 = refract(d, normal1, 1.0, 1.5);
+            const ref1 =
+                refract(
+                    d,
+                    normal1,
+                    1.0,
+                    1.5
+                );
+
             const rRay1 = ref1.ray;
 
             let secondHit = null;
             let secondFace = null;
 
             for (let edge of edges) {
-                if (edge === matchedEdge) continue;
+                if (edge === matchedEdge)
+                    continue;
 
-                const inter2 = getSegmentIntersection(
-                    firstHit.point,
-                    rRay1,
-                    edge.a,
-                    edge.b
-                );
+                const inter2 =
+                    getSegmentIntersection(
+                        firstHit.point,
+                        rRay1,
+                        edge.a,
+                        edge.b
+                    );
 
                 if (inter2) {
-                    if (!secondHit || inter2.t < secondHit.t) {
+                    if (
+                        !secondHit ||
+                        inter2.t < secondHit.t
+                    ) {
                         secondHit = inter2;
                         secondFace = edge;
                     }
                 }
             }
 
-            if (secondHit && secondFace) {
+            if (
+                secondHit &&
+                secondFace
+            ) {
                 drawLine(
                     firstHit.point,
                     secondHit.point,
@@ -696,34 +1241,44 @@ function traceRays() {
                     4
                 );
 
-                const vFace2 = sub(
-                    secondFace.b,
-                    secondFace.a
-                );
+                const vFace2 =
+                    sub(
+                        secondFace.b,
+                        secondFace.a
+                    );
 
-                let normal2 = normalize({
-                    x: vFace2.y,
-                    y: -vFace2.x
-                });
+                let normal2 =
+                    normalize({
+                        x: vFace2.y,
+                        y: -vFace2.x
+                    });
 
-                if (dot(rRay1, normal2) > 0)
+                if (
+                    dot(rRay1, normal2) > 0
+                ) {
                     normal2 = {
                         x: -normal2.x,
                         y: -normal2.y
                     };
+                }
 
-                const ref2 = refract(
-                    rRay1,
-                    normal2,
-                    1.5,
-                    1.0
-                );
+                const ref2 =
+                    refract(
+                        rRay1,
+                        normal2,
+                        1.5,
+                        1.0
+                    );
 
-                const rRay2 = ref2.ray;
+                const rRay2 =
+                    ref2.ray;
 
                 drawLine(
                     secondHit.point,
-                    add(secondHit.point, mul(rRay2, 800)),
+                    add(
+                        secondHit.point,
+                        mul(rRay2, 800)
+                    ),
                     "#e53935",
                     4
                 );
@@ -743,10 +1298,12 @@ function traceRays() {
 
 function updateVisibility() {
     const type = objectType.value;
-    const isLens = (
-        type === "convexLens" ||
-        type === "concaveLens"
-    );
+
+    const isLens =
+        (
+            type === "convexLens" ||
+            type === "concaveLens"
+        );
 
     lensThicknessRow.style.display =
         isLens ? "grid" : "none";
@@ -762,21 +1319,32 @@ function updateVisibility() {
 }
 
 function render() {
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(
+        0,
+        0,
+        W,
+        H
+    );
+
     drawAxis();
 
     const type = objectType.value;
 
     if (type === "convexLens")
         drawConvexLens();
+
     else if (type === "concaveLens")
         drawConcaveLens();
+
     else if (type === "planeMirror")
         drawPlaneMirror();
+
     else if (type === "concaveMirror")
         drawConcaveMirror();
+
     else if (type === "convexMirror")
         drawConvexMirror();
+
     else if (type === "prism")
         drawPrism();
 
@@ -785,60 +1353,86 @@ function render() {
 }
 
 /* --- 이벤트 리스너 --- */
-canvas.addEventListener("mousedown", (e) => {
-    const mouse = getCanvasMousePos(e);
-    const lHandle = laserHandlePos();
+canvas.addEventListener(
+    "mousedown",
+    (e) => {
+        const mouse =
+            getCanvasMousePos(e);
 
-    if (
-        Math.hypot(
-            mouse.x - lHandle.x,
-            mouse.y - lHandle.y
-        ) < 25
-    ) {
-        draggingLaserHandle = true;
-        return;
+        const lHandle =
+            laserHandlePos();
+
+        if (
+            Math.hypot(
+                mouse.x - lHandle.x,
+                mouse.y - lHandle.y
+            ) < 25
+        ) {
+            draggingLaserHandle = true;
+            return;
+        }
+
+        const hLimit =
+            parseFloat(
+                deviceSize.value
+            ) / 2;
+
+        if (
+            mouse.x >= objectXPos - 70 &&
+            mouse.x <= objectXPos + 70 &&
+            mouse.y >= axisY - hLimit - 30 &&
+            mouse.y <= axisY + hLimit + 30
+        ) {
+            draggingDevice = true;
+            return;
+        }
     }
+);
 
-    const hLimit =
-        parseFloat(deviceSize.value) / 2;
+window.addEventListener(
+    "mousemove",
+    (e) => {
+        if (
+            !draggingLaserHandle &&
+            !draggingDevice
+        )
+            return;
 
-    if (
-        mouse.x >= objectXPos - 70 &&
-        mouse.x <= objectXPos + 70 &&
-        mouse.y >= axisY - hLimit - 30 &&
-        mouse.y <= axisY + hLimit + 30
-    ) {
-        draggingDevice = true;
-        return;
+        const mouse =
+            getCanvasMousePos(e);
+
+        if (draggingLaserHandle) {
+            laser.angle =
+                Math.atan2(
+                    mouse.y - laser.y,
+                    mouse.x - laser.x
+                );
+
+            render();
+        }
+
+        else if (draggingDevice) {
+            objectXPos =
+                Math.max(
+                    300,
+                    Math.min(
+                        950,
+                        mouse.x
+                    )
+                );
+
+            render();
+        }
     }
-});
+);
 
-window.addEventListener("mousemove", (e) => {
-    if (!draggingLaserHandle && !draggingDevice)
-        return;
-
-    const mouse = getCanvasMousePos(e);
-
-    if (draggingLaserHandle) {
-        laser.angle = Math.atan2(
-            mouse.y - laser.y,
-            mouse.x - laser.x
-        );
-        render();
+window.addEventListener(
+    "mouseup",
+    () => {
+        draggingLaserHandle = false;
+        draggingDevice = false;
     }
-    else if (draggingDevice) {
-        objectXPos = Math.max(
-            300,
-            Math.min(950, mouse.x)
-        );
-        render();
-    }
-});
-
-window.addEventListener("mouseup", () => {
-    draggingLaserHandle = false;
-    draggingDevice = false;
-});
+);
 
 objectType.addEventListener(
     "change",
@@ -853,7 +1447,9 @@ deviceSize.addEventListener(
     () => {
         document.getElementById(
             "deviceSizeValue"
-        ).innerText = deviceSize.value;
+        ).innerText =
+            deviceSize.value;
+
         render();
     }
 );
@@ -863,7 +1459,9 @@ lensThickness.addEventListener(
     () => {
         document.getElementById(
             "lensThicknessValue"
-        ).innerText = lensThickness.value;
+        ).innerText =
+            lensThickness.value;
+
         render();
     }
 );
@@ -873,7 +1471,9 @@ radius.addEventListener(
     () => {
         document.getElementById(
             "radiusValue"
-        ).innerText = radius.value;
+        ).innerText =
+            radius.value;
+
         render();
     }
 );
@@ -883,7 +1483,9 @@ prismAngle.addEventListener(
     () => {
         document.getElementById(
             "prismAngleValue"
-        ).innerText = prismAngle.value + "°";
+        ).innerText =
+            prismAngle.value + "°";
+
         render();
     }
 );
@@ -895,4 +1497,8 @@ render();
 </html>
 """
 
-components.html(html_code, height=920, scrolling=True)
+components.html(
+    html_code,
+    height=920,
+    scrolling=True
+)
