@@ -448,37 +448,7 @@ function traceRays() {
 
     if (type === "convexLens") {
         const g = getLensGeometry();
-        // 볼록렌즈: 두 경계면 모두 렌즈 바깥쪽을 향해 휘어짐 (입사면은 오른쪽 중심, 출사면은 왼쪽 중심)
-        const frontCx = g.x + g.th/2 - g.R;
-        const backCx = g.x - g.th/2 + g.R;
-
-        const hitInRes = rayLensSurfaceIntersection(p, d, frontCx, axisY, g.R, hLimit);
-        if (hitInRes) {
-            const hitIn = hitInRes.point;
-            drawLine(p, hitIn, "#e53935", 4);
-
-            const normal1 = normalize(sub({ x: frontCx, y: axisY }, hitIn));
-            const ref1 = refract(d, normal1, 1.0, 1.5);
-            const internalRay = ref1.ray;
-
-            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCx, axisY, g.R, hLimit);
-            if (hitOutRes) {
-                const hitOut = hitOutRes.point;
-                drawLine(hitIn, hitOut, "#e53935", 4);
-
-                const normal2 = normalize(sub(hitOut, { x: backCx, y: axisY }));
-                const ref2 = refract(internalRay, normal2, 1.5, 1.0);
-                const finalRay = ref2.ray;
-
-                drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4);
-                return;
-            }
-        }
-        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
-    }
-    else if (type === "concaveLens") {
-        const g = getLensGeometry();
-        // 오목렌즈: 두 경계면 모두 렌즈 안쪽으로 오목하게 파임 (입사면은 왼쪽 중심, 출사면은 오른쪽 중심)
+        // 볼록렌즈 구면 중심 좌표 설정 (앞면: 왼쪽 중심, 뒷면: 오른쪽 중심)
         const frontCx = g.x - g.th/2 + g.R;
         const backCx = g.x + g.th/2 - g.R;
 
@@ -497,6 +467,36 @@ function traceRays() {
                 drawLine(hitIn, hitOut, "#e53935", 4);
 
                 const normal2 = normalize(sub({ x: backCx, y: axisY }, hitOut));
+                const ref2 = refract(internalRay, normal2, 1.5, 1.0);
+                const finalRay = ref2.ray;
+
+                drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4);
+                return;
+            }
+        }
+        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+    }
+    else if (type === "concaveLens") {
+        const g = getLensGeometry();
+        // 오목렌즈 구면 중심 좌표 설정 (앞면: 오른쪽 중심, 뒷면: 왼쪽 중심)
+        const frontCx = g.x + g.th/2 - g.R;
+        const backCx = g.x - g.th/2 + g.R;
+
+        const hitInRes = rayLensSurfaceIntersection(p, d, frontCx, axisY, g.R, hLimit);
+        if (hitInRes) {
+            const hitIn = hitInRes.point;
+            drawLine(p, hitIn, "#e53935", 4);
+
+            const normal1 = normalize(sub({ x: frontCx, y: axisY }, hitIn));
+            const ref1 = refract(d, normal1, 1.0, 1.5);
+            const internalRay = ref1.ray;
+
+            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCx, axisY, g.R, hLimit);
+            if (hitOutRes) {
+                const hitOut = hitOutRes.point;
+                drawLine(hitIn, hitOut, "#e53935", 4);
+
+                const normal2 = normalize(sub(hitOut, { x: backCx, y: axisY }));
                 const ref2 = refract(internalRay, normal2, 1.5, 1.0);
                 const finalRay = ref2.ray;
 
