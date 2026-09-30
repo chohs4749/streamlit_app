@@ -86,7 +86,7 @@ input[type="range"] {
 }
 .real-line { width: 40px; border-top: 4px solid #e53935; }
 .virtual-line { width: 40px; border-top: 2px dashed #ff9800; }
-.normal-line { width: 40px; border-top: 2px dashed #1976d2; }
+.axis-line { width: 40px; border-top: 2px dashed #aaa; }
 </style>
 </head>
 <body>
@@ -117,8 +117,8 @@ input[type="range"] {
 
     <div id="lensThicknessRow" class="control-grid">
         <label>렌즈 두께</label>
-        <input id="lensThickness" type="range" min="10" max="60" value="30">
-        <span id="lensThicknessValue" class="value">30</span>
+        <input id="lensThickness" type="range" min="15" max="60" value="35">
+        <span id="lensThicknessValue" class="value">35</span>
     </div>
 
     <div id="radiusRow" class="control-grid" style="display:none;">
@@ -139,7 +139,7 @@ input[type="range"] {
     <div class="legend">
         <div class="legend-item"><span class="real-line"></span> 실제 레이저 광선 (굴절/반사)</div>
         <div class="legend-item"><span class="virtual-line"></span> 직진했을 때의 원래 경로 (점선)</div>
-        <div class="legend-item"><span class="normal-line"></span> 광축</div>
+        <div class="legend-item"><span class="axis-line"></span> 광축</div>
     </div>
 </div>
 
@@ -370,104 +370,138 @@ function traceRays() {
         return;
     }
 
-    const t = (ox - p.x) / d.x;
-    if (t <= 0) {
-        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
-        return;
-    }
-
-    const hitPoint = add(p, mul(d, t));
-    const dy = hitPoint.y - axisY;
-
-    if (Math.abs(dy) > hLimit && type !== 'prism') {
-        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
-        return;
-    }
-
-    // 1. 실제 레이저 입사 광선
-    drawLine(p, hitPoint, "#e53935", 4);
-    // 2. 직진했을 때의 원래 경로 점선
+    // 직진했을 때의 원래 경로 점선 (배치 순서: 배경 뒤쪽에 표시)
     drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
     if (type === "convexLens") {
-        const hitIn = { x: ox - th/2, y: hitPoint.y };
-        const hitOut = { x: ox + th/2, y: hitPoint.y };
+        // 렌즈 전면 및 후면 경계면의 실제 X좌표 계산 (포물선 형태 반영)
+        const relY = (p.y + (d.y / d.x) * (ox - p.x) - axisY);
+        const normY = Math.min(1, Math.max(-1, relY / hLimit));
         
-        drawLine(p, hitIn, "#e53935", 4);
-        drawLine(hitIn, hitOut, "#e53935", 4);
+        // 전면 곡면 교차점 (빛이 들어오는 곳)
+        const hitInX = ox - (th / 2) * (1 - normY * normY * 0.5);
+        const hitIn = { x: hitInX, y: p.y + (d.y / d.x) * (hitInX - p.x) };
+        
+        // 후면 곡면 교차점 (빛이 나가는 곳)
+        const hitOutX = ox + (th / 2) * (1 - normY * normY * 0.5);
+        const hitOut = { x: hitOutX, y: hitIn.y + (d.y / d.x) * (hitOutX - hitIn.X || (hitOutX - hitIn.x)) };
 
-        const focus = { x: ox + 180, y: axisY };
-        const outDir = normalize(sub(focus, hitOut));
-        drawLine(hitOut, add(hitOut, mul(outDir, 800)), "#e53935", 4);
+        if (Math.abs(hitIn.y - axisY) <= hLimit) {
+            drawLine(p, hitIn, "#e53935", 4);
+            drawLine(hitIn, hitOut, "#e53935", 4);
+
+            const focus = { x: ox + 180, y: axisY };
+            const outDir = normalize(sub(focus, hitOut));
+            drawLine(hitOut, add(hitOut, mul(outDir, 800)), "#e53935", 4);
+        } else {
+            drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+        }
     } 
     else if (type === "concaveLens") {
-        const hitIn = { x: ox - th/2, y: hitPoint.y };
-        const hitOut = { x: ox + th/2, y: hitPoint.y };
+        const relY = (p.y + (d.y / d.x) * (ox - p.x) - axisY);
+        const normY = Math.min(1, Math.max(-1, relY / hLimit));
+        
+        const hitInX = ox - th * (0.8 + normY * normY * 0.2);
+        const hitIn = { x: hitInX, y: p.y + (d.y / d.x) * (hitInX - p.x) };
+        
+        const hitOutX = ox + th * 0.3;
+        const hitOut = { x: hitOutX, y: hitIn.y + (d.y / d.x) * (hitOutX - hitIn.x) };
 
-        drawLine(p, hitIn, "#e53935", 4);
-        drawLine(hitIn, hitOut, "#e53935", 4);
+        if (Math.abs(hitIn.y - axisY) <= hLimit) {
+            drawLine(p, hitIn, "#e53935", 4);
+            drawLine(hitIn, hitOut, "#e53935", 4);
 
-        const outDir = normalize({ x: 1, y: dy > 0 ? 0.55 : -0.55 });
-        drawLine(hitOut, add(hitOut, mul(outDir, 800)), "#e53935", 4);
+            const outDir = normalize({ x: 1, y: relY > 0 ? 0.55 : -0.55 });
+            drawLine(hitOut, add(hitOut, mul(outDir, 800)), "#e53935", 4);
+        } else {
+            drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+        }
     }
     else if (type === "planeMirror") {
-        const n = { x: -1, y: 0 };
-        const dotND = dot(d, n);
-        const outDir = { x: d.x - 2 * dotND * n.x, y: d.y - 2 * dotND * n.y };
-        drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
+        const t = (ox - p.x) / d.x;
+        const hitPoint = add(p, mul(d, t));
+        if (Math.abs(hitPoint.y - axisY) <= hLimit) {
+            drawLine(p, hitPoint, "#e53935", 4);
+            const n = { x: -1, y: 0 };
+            const dotND = dot(d, n);
+            const outDir = { x: d.x - 2 * dotND * n.x, y: d.y - 2 * dotND * n.y };
+            drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
+        } else {
+            drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+        }
     }
     else if (type === "concaveMirror") {
         const R = parseFloat(radius.value);
-        // 오목거울 표면의 실제 X좌표 (구면 방정식 기반 정확한 도달점 계산)
-        // 거울 중심: center = (ox + R, axisY)
-        // 구면 방정식: (x - (ox + R))^2 + (y - axisY)^2 = R^2
-        const centerY = axisY;
         const centerX = ox + R;
+        const centerY = axisY;
         
-        // 레이저 직선 방정식: y = p.y + (d.y / d.x) * (x - p.x)
-        // 두 방정식을 연립하여 오목거울 좌측 표면과의 교차점 유도
         const slope = d.y / d.x;
         const bLine = p.y - slope * p.x;
         
-        // 이차방정식 계수 (Ax^2 + Bx + C = 0)
         const A_eq = 1 + slope * slope;
         const B_eq = -2 * centerX + 2 * slope * (bLine - centerY);
         const C_eq = centerX * centerX + (bLine - centerY) * (bLine - centerY) - R * R;
         
         const discriminant = B_eq * B_eq - 4 * A_eq * C_eq;
-        let actualHit = hitPoint;
+        let actualHit = null;
         
         if (discriminant >= 0) {
             const x1 = (-B_eq - Math.sqrt(discriminant)) / (2 * A_eq);
             const x2 = (-B_eq + Math.sqrt(discriminant)) / (2 * A_eq);
-            // 레이저 진행 방향(오른쪽)에 있는 교차점 선택
             const validX = (x1 > p.x && x1 < ox + R) ? x1 : x2;
             const validY = slope * validX + bLine;
-            actualHit = { x: validX, y: validY };
+            if (Math.abs(validY - axisY) <= hLimit) {
+                actualHit = { x: validX, y: validY };
+            }
         }
 
-        const normal = normalize(sub(actualHit, { x: centerX, y: centerY }));
-        const dotND = dot(d, normal);
-        const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
-
-        // 정확한 구면 교차점으로 레이저 재작도
-        drawLine(p, actualHit, "#e53935", 4);
-        drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
+        if (actualHit) {
+            drawLine(p, actualHit, "#e53935", 4);
+            const normal = normalize(sub(actualHit, { x: centerX, y: centerY }));
+            const dotND = dot(d, normal);
+            const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
+            drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
+        } else {
+            drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+        }
     }
     else if (type === "convexMirror") {
         const R = parseFloat(radius.value);
-        const center = { x: ox - R, y: axisY };
-        const angleToHit = Math.atan2(hitPoint.y - center.y, hitPoint.x - center.x);
-        const actualHitX = center.x + R * Math.cos(angleToHit);
-        const actualHitY = center.y + R * Math.sin(angleToHit);
-        const actualHit = { x: actualHitX, y: actualHitY };
+        const centerX = ox - R;
+        const centerY = axisY;
 
-        const normal = normalize(sub(center, actualHit));
-        const dotND = dot(d, normal);
-        const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
+        const slope = d.y / d.x;
+        const bLine = p.y - slope * p.x;
 
-        drawLine(p, actualHit, "#e53935", 4);
-        drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
+        const A_eq = 1 + slope * slope;
+        const B_eq = -2 * centerX + 2 * slope * (bLine - centerY);
+        const C_eq = centerX * centerX + (bLine - centerY) * (bLine - centerY) - R * R;
+
+        const discriminant = B_eq * B_eq - 4 * A_eq * C_eq;
+        let actualHit = null;
+
+        if (discriminant >= 0) {
+            const x1 = (-B_eq - Math.sqrt(discriminant)) / (2 * A_eq);
+            const x2 = (-B_eq + Math.sqrt(discriminant)) / (2 * A_eq);
+            // 볼록거울 표면은 ox 왼쪽에 위치하므로 해당 영역의 교차점 선택
+            const validX = (x1 > p.x && x1 <= ox) ? x1 : (x2 > p.x && x2 <= ox ? x2 : null);
+            if (validX !== null) {
+                const validY = slope * validX + bLine;
+                if (Math.abs(validY - axisY) <= hLimit) {
+                    actualHit = { x: validX, y: validY };
+                }
+            }
+        }
+
+        if (actualHit) {
+            drawLine(p, actualHit, "#e53935", 4);
+            const normal = normalize(sub({ x: centerX, y: centerY }, actualHit));
+            const dotND = dot(d, normal);
+            const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
+            drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
+        } else {
+            drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+        }
     }
     else if (type === "prism") {
         const A = parseFloat(prismAngle.value) * Math.PI / 180;
@@ -491,7 +525,6 @@ function traceRays() {
 
             const inter2 = getSegmentIntersection(inter1.point, rRay1, Vtop, Vbr);
             if (inter2) {
-                // 프리즘 내부 단일 경로만 깔끔하게 유지
                 drawLine(inter1.point, inter2.point, "#e53935", 4);
 
                 const vRight = sub(Vbr, Vtop);
@@ -503,6 +536,8 @@ function traceRays() {
 
                 drawLine(inter2.point, add(inter2.point, mul(rRay2, 800)), "#e53935", 4);
             }
+        } else {
+            drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
         }
     }
 }
