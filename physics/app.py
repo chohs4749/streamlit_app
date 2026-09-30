@@ -242,7 +242,7 @@ function drawAxis() {
     drawText("광축", 1015, axisY - 10, 13, "#888");
 }
 
-/* --- 렌즈 기하학 스펙 (시각/물리 완벽 동기화) --- */
+/* --- 렌즈 기하학 스펙 --- */
 function getLensGeometry() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
@@ -388,7 +388,6 @@ function rayCircleIntersectionStrict(p, d, specs) {
     return null;
 }
 
-/* --- 렌즈 표면 정밀 교차 연산 (볼록/오목 완벽 대응) --- */
 function rayLensSurfaceIntersection(p, d, circleX, circleY, R, hLimit) {
     const L = sub(p, { x: circleX, y: circleY });
     const A = 1;
@@ -445,29 +444,32 @@ function traceRays() {
         return;
     }
 
-    // 직진 경로 점선
     drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
     if (type === "convexLens") {
         const g = getLensGeometry();
-        // 볼록렌즈: 앞면은 중심이 오른쪽(+), 뒷면은 중심이 왼쪽(-)인 구면
-        const frontCx = g.x + g.th/2 - g.R;
-        const backCx = g.x - g.th/2 + g.R;
+        // 볼록렌즈 앞면 구원점 (오른쪽 중심), 뒷면 구원점 (왼쪽 중심)
+        const frontCx = g.x - g.th/2 + g.R;
+        const backCx = g.x + g.th/2 - g.R;
 
+        // 1. 앞면 교차점 찾기 (공기 -> 렌즈)
         const hitInRes = rayLensSurfaceIntersection(p, d, frontCx, axisY, g.R, hLimit);
         if (hitInRes) {
             const hitIn = hitInRes.point;
             drawLine(p, hitIn, "#e53935", 4);
 
+            // 앞면 법선 벡터 (구의 중심에서 표면 점으로 향하는 방향)
             const normal1 = normalize(sub(hitIn, { x: frontCx, y: axisY }));
             const ref1 = refract(d, normal1, 1.0, 1.5);
             const internalRay = ref1.ray;
 
+            // 2. 뒷면 교차점 찾기 (렌즈 -> 공기)
             const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCx, axisY, g.R, hLimit);
             if (hitOutRes) {
                 const hitOut = hitOutRes.point;
                 drawLine(hitIn, hitOut, "#e53935", 4);
 
+                // 뒷면 법선 벡터
                 const normal2 = normalize(sub({ x: backCx, y: axisY }, hitOut));
                 const ref2 = refract(internalRay, normal2, 1.5, 1.0);
                 const finalRay = ref2.ray;
@@ -480,7 +482,6 @@ function traceRays() {
     }
     else if (type === "concaveLens") {
         const g = getLensGeometry();
-        // 오목렌즈: 앞면은 중심이 왼쪽(-), 뒷면은 중심이 오른쪽(+)인 구면
         const frontCx = g.x - g.th/2 + g.R;
         const backCx = g.x + g.th/2 - g.R;
 
