@@ -1431,7 +1431,7 @@ function traceRays() {
             const focus = {
 
                 x:
-                    g.x+
+                    g.x +
                     focusDistance,
 
                 y:
@@ -1439,9 +1439,11 @@ function traceRays() {
 
             };
 
-
             /*
              * 실제 레이저
+             *
+             * 이전에 정상적으로 작동했던 방식 그대로
+             * 하나의 연속된 광선으로 표시한다.
              */
             drawLine(
                 p,
@@ -1452,24 +1454,13 @@ function traceRays() {
 
             drawLine(
                 hitIn,
-                hitOut,
-                "#e53935",
-                4
-            );
-
-            drawLine(
-                hitOut,
                 focus,
                 "#e53935",
                 4
             );
 
-
             /*
              * 원래 직진 경로 점선
-             *
-             * 레이저와 같은 발사점에서
-             * 같은 방향으로 출발한다.
              */
             drawLine(
                 p,
