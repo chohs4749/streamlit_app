@@ -1196,130 +1196,52 @@ function rayLensSurfaceIntersection(
 
 /* =========================================================
    스넬의 법칙에 따른 굴절 계산
-   I : 입사 방향 단위벡터
-   N : 경계면의 법선 (입사광을 향하도록 자동 보정)
-   n1: 입사 매질 굴절률
-   n2: 투과 매질 굴절률
    ========================================================= */
-function refract(I, N, n1, n2) {
 
-    I = normalize(I);
-    N = normalize(N);
+function refract(d, normal, n1, n2) {
 
-    let cosI = -dot(I, N);
+    let N = normalize(normal);
 
-    /* 법선이 입사광과 반대 방향을 향하도록 보정 */
-    if (cosI < 0) {
+    let cosI = -dot(d, N);
 
+    /* 법선 방향이 반대로 들어온 경우 자동으로 뒤집는다. */
+    if(cosI < 0) {
         N = {
-            x: -N.x,
-            y: -N.y
+            x:-N.x,
+            y:-N.y
         };
-
-        cosI = -dot(I, N);
-
+        cosI = -dot(d, N);
     }
 
-    cosI = Math.max(0, Math.min(1, cosI));
+    const eta = n1/n2;
+    const k = 1 - eta*eta*(1-cosI*cosI);
 
-    const eta = n1 / n2;
+    /* 전반사가 일어나는 경우 */
+    if(k < 0) {
 
-    const sin2T =
-        eta * eta * (1 - cosI * cosI);
-
-    /* 전반사 */
-    if (sin2T > 1) {
+        const reflected = {
+            x:d.x - 2*dot(d,N)*N.x,
+            y:d.y - 2*dot(d,N)*N.y
+        };
 
         return {
-            ray: null,
-            totalInternalReflection: true
+            ray:normalize(reflected),
+            totalInternalReflection:true
         };
 
     }
 
-    const cosT =
-        Math.sqrt(
-            Math.max(0, 1 - sin2T)
-        );
+    const cosT = Math.sqrt(k);
 
-    const T = {
-
-        x:
-            eta * I.x +
-            (eta * cosI - cosT) * N.x,
-
-        y:
-            eta * I.y +
-            (eta * cosI - cosT) * N.y
-
-    };
+    const ray = normalize({
+        x:eta*d.x + (eta*cosI-cosT)*N.x,
+        y:eta*d.y + (eta*cosI-cosT)*N.y
+    });
 
     return {
-        ray: normalize(T),
-        totalInternalReflection: false
+        ray,
+        totalInternalReflection:false
     };
-
-}
-
-
-function reflectRay(I, N) {
-
-    I = normalize(I);
-    N = normalize(N);
-
-    const k = dot(I, N);
-
-    return normalize({
-
-        x:
-            I.x - 2 * k * N.x,
-
-        y:
-            I.y - 2 * k * N.y
-
-    });
-
-}
-
-
-/*
- * 삼각형의 각 변에서 바깥쪽을 향하는 법선을 구한다.
- * 화면 좌표계(y가 아래로 증가하는 좌표계)에서도
- * 삼각형 내부를 기준으로 판별하기 때문에 방향이 안정적이다.
- */
-function getOutwardNormal(edge, center) {
-
-    const face =
-        sub(edge.b, edge.a);
-
-    let n = normalize({
-
-        x: -face.y,
-        y: face.x
-
-    });
-
-    const midpoint = {
-
-        x: (edge.a.x + edge.b.x) / 2,
-        y: (edge.a.y + edge.b.y) / 2
-
-    };
-
-    const towardCenter =
-        sub(center, midpoint);
-
-    /* 현재 n이 내부를 향한다면 반전 */
-    if (dot(n, towardCenter) > 0) {
-
-        n = {
-            x: -n.x,
-            y: -n.y
-        };
-
-    }
-
-    return n;
 
 }
 
@@ -1452,13 +1374,6 @@ function traceRays() {
 
             drawLine(
                 hitIn,
-                hitOut,
-                "#e53935",
-                4
-            );
-
-            drawLine(
-                hitOut,
                 focus,
                 "#e53935",
                 4
@@ -1584,19 +1499,21 @@ function traceRays() {
 
 
             /*
-             * =================================================
-             * 수정된 부분
+             * 오목렌즈에서 점선은
+             * 렌즈가 없었다면 레이저가 그대로 직진했을
+             * 원래의 경로를 나타낸다.
              *
-             * 오목렌즈에서도 점선이 레이저와 정확히
-             * 같은 발사점 p에서 시작한다.
-             *
-             * 렌즈에 들어가기 전까지는
-             * 실제 레이저와 완전히 같은 원래 직진 경로이다.
-             * =================================================
+             * 따라서 발사점 p에서 시작하여 같은 방향 d로
+             * 렌즈를 통과한 뒤까지도 계속 직선으로 그린다.
+             * 렌즈 앞에서는 실제 레이저(빨간색)와
+             * 정확히 같은 경로를 공유한다.
              */
             drawLine(
                 p,
-                hitIn,
+                add(
+                    p,
+                    mul(d,1000)
+                ),
                 "#ff9800",
                 2,
                 true
@@ -1605,6 +1522,9 @@ function traceRays() {
 
             /*
              * 오목렌즈를 통과한 뒤의 실제 발산광선
+             *
+             * 광선이 뒤쪽의 가상 초점에서 나온 것처럼
+             * 보이도록 방향을 정한다.
              */
             const virtualFocusDistance =
                 Math.max(
@@ -1646,19 +1566,7 @@ function traceRays() {
                 4
             );
 
-
-            /*
-             * 렌즈를 통과한 뒤
-             * 뒤쪽으로 연장했을 때 만나는
-             * 가상 초점까지의 점선
-             */
-            drawLine(
-                virtualFocus,
-                hitOut,
-                "#ff9800",
-                2,
-                true
-            );
+            return;
 
             return;
 
@@ -2026,14 +1934,6 @@ function traceRays() {
      * =====================================================
      * 프리즘
      * =====================================================
-     *
-     * 공기(n=1.0) → 유리(n=1.5) → 공기(n=1.0)의
-     * 두 경계면에서 각각 스넰의 법칙을 적용한다.
-     *
-     * 첫 번째 면에 들어간 뒤에는 프리즘 내부에서 직진하고,
-     * 두 번째 면에서는 다시 굴절하여 프리즘 밖으로 나온다.
-     * 전반사가 발생하면 반사 방향을 계산한 뒤 다음 면까지
-     * 계속 추적한다.
      */
 
     else if(
@@ -2062,7 +1962,8 @@ function traceRays() {
             x:
                 ox-base/2,
 
-            y:axisY+height/2
+            y:
+                axisY+height/2
 
         };
 
@@ -2078,7 +1979,8 @@ function traceRays() {
             x:
                 ox+base/2,
 
-            y:axisY+height/2
+            y:
+                axisY+height/2
 
         };
 
@@ -2101,23 +2003,12 @@ function traceRays() {
 
         ];
 
-        const prismCenter = {
-
-            x:
-                (Vbl.x + Vtop.x + Vbr.x) / 3,
-
-            y:
-                (Vbl.y + Vtop.y + Vbr.y) / 3
-
-        };
-
-        /*
-         * 레이저가 프리즘에 처음 닿는 면을 찾는다.
-         */
         let firstHit = null;
-        let firstFace = null;
+        let matchedEdge = null;
 
-        for (let edge of edges) {
+        for(
+            let edge of edges
+        ) {
 
             const inter =
                 getSegmentIntersection(
@@ -2127,15 +2018,15 @@ function traceRays() {
                     edge.b
                 );
 
-            if (inter) {
+            if(inter) {
 
-                if (
+                if(
                     !firstHit ||
-                    inter.t < firstHit.t
+                    inter.t<firstHit.t
                 ) {
 
                     firstHit = inter;
-                    firstFace = edge;
+                    matchedEdge = edge;
 
                 }
 
@@ -2143,15 +2034,14 @@ function traceRays() {
 
         }
 
-        /* 프리즘에 닿지 않으면 기존처럼 직진 */
-        if (!firstHit || !firstFace) {
+        if(
+            firstHit &&
+            matchedEdge
+        ) {
 
             drawLine(
                 p,
-                add(
-                    p,
-                    mul(d,1000)
-                ),
+                firstHit.point,
                 "#e53935",
                 4
             );
@@ -2167,11 +2057,152 @@ function traceRays() {
                 true
             );
 
-            return;
+            const vFace1 =
+                sub(
+                    matchedEdge.b,
+                    matchedEdge.a
+                );
+
+            let normal1 =
+                normalize({
+                    x:-vFace1.y,
+                    y:vFace1.x
+                });
+
+            if(
+                dot(d,normal1)>0
+            ) {
+
+                normal1 = {
+
+                    x:-normal1.x,
+                    y:-normal1.y
+
+                };
+
+            }
+
+            const ref1 =
+                refract(
+                    d,
+                    normal1,
+                    1.0,
+                    1.5
+                );
+
+            const rRay1 =
+                ref1.ray;
+
+            let secondHit = null;
+            let secondFace = null;
+
+            for(
+                let edge of edges
+            ) {
+
+                if(
+                    edge===matchedEdge
+                )
+                    continue;
+
+                const inter2 =
+                    getSegmentIntersection(
+                        firstHit.point,
+                        rRay1,
+                        edge.a,
+                        edge.b
+                    );
+
+                if(inter2) {
+
+                    if(
+                        !secondHit ||
+                        inter2.t<secondHit.t
+                    ) {
+
+                        secondHit = inter2;
+                        secondFace = edge;
+
+                    }
+
+                }
+
+            }
+
+            if(
+                secondHit &&
+                secondFace
+            ) {
+
+                drawLine(
+                    firstHit.point,
+                    secondHit.point,
+                    "#e53935",
+                    4
+                );
+
+                const vFace2 =
+                    sub(
+                        secondFace.b,
+                        secondFace.a
+                    );
+
+                let normal2 =
+                    normalize({
+                        x:vFace2.y,
+                        y:-vFace2.x
+                    });
+
+                if(
+                    dot(rRay1,normal2)>0
+                ) {
+
+                    normal2 = {
+
+                        x:-normal2.x,
+                        y:-normal2.y
+
+                    };
+
+                }
+
+                const ref2 =
+                    refract(
+                        rRay1,
+                        normal2,
+                        1.5,
+                        1.0
+                    );
+
+                const rRay2 =
+                    ref2.ray;
+
+                drawLine(
+                    secondHit.point,
+                    add(
+                        secondHit.point,
+                        mul(rRay2,800)
+                    ),
+                    "#e53935",
+                    4
+                );
+
+                return;
+
+            }
 
         }
 
-        /* 원래 직진 경로 */
+        drawLine(
+            p,
+            add(
+                p,
+                mul(d,1000)
+            ),
+            "#e53935",
+            4
+        );
+
         drawLine(
             p,
             add(
@@ -2182,193 +2213,6 @@ function traceRays() {
             2,
             true
         );
-
-        /* 입사 전 구간 */
-        drawLine(
-            p,
-            firstHit.point,
-            "#e53935",
-            4
-        );
-
-        /*
-         * 첫 번째 경계:
-         * 공기 → 유리
-         */
-        const normalIn =
-            getOutwardNormal(
-                firstFace,
-                prismCenter
-            );
-
-        const firstRefraction =
-            refract(
-                d,
-                normalIn,
-                1.0,
-                1.5
-            );
-
-        /* 공기 → 유리에서는 일반적으로 전반사가 불가능하지만,
-           안전하게 예외 처리한다. */
-        if (
-            firstRefraction.totalInternalReflection ||
-            !firstRefraction.ray
-        ) {
-
-            const reflected =
-                reflectRay(
-                    d,
-                    normalIn
-                );
-
-            drawLine(
-                firstHit.point,
-                add(
-                    firstHit.point,
-                    mul(reflected,800)
-                ),
-                "#e53935",
-                4
-            );
-
-            return;
-
-        }
-
-        let currentPoint =
-            firstHit.point;
-
-        let currentDir =
-            firstRefraction.ray;
-
-        let currentMedium = 1.5;
-
-        /*
-         * 프리즘 내부에서 경계면을 순서대로 추적한다.
-         * 일반적인 경우에는 두 번째 면에서 바로 공기로 나온다.
-         * 전반사가 발생하면 다음 면까지 계속 진행한다.
-         */
-        for (let bounce = 0; bounce < 8; bounce++) {
-
-            let nextHit = null;
-            let nextFace = null;
-
-            for (let edge of edges) {
-
-                /* 현재 들어온 면과의 t≈0 교차는 제외 */
-                const inter =
-                    getSegmentIntersection(
-                        currentPoint,
-                        currentDir,
-                        edge.a,
-                        edge.b
-                    );
-
-                if (inter) {
-
-                    if (
-                        !nextHit ||
-                        inter.t < nextHit.t
-                    ) {
-
-                        nextHit = inter;
-                        nextFace = edge;
-
-                    }
-
-                }
-
-            }
-
-            if (!nextHit || !nextFace) {
-
-                drawLine(
-                    currentPoint,
-                    add(
-                        currentPoint,
-                        mul(currentDir,800)
-                    ),
-                    "#e53935",
-                    4
-                );
-
-                return;
-
-            }
-
-            /* 현재 매질 안에서 경계면까지 진행 */
-            drawLine(
-                currentPoint,
-                nextHit.point,
-                "#e53935",
-                4
-            );
-
-            const outwardNormal =
-                getOutwardNormal(
-                    nextFace,
-                    prismCenter
-                );
-
-            /*
-             * 프리즘 내부 → 공기
-             */
-            const exitRefraction =
-                refract(
-                    currentDir,
-                    outwardNormal,
-                    currentMedium,
-                    1.0
-                );
-
-            if (
-                exitRefraction.totalInternalReflection ||
-                !exitRefraction.ray
-            ) {
-
-                /* 전반사: 프리즘 내부에서 다시 반사 */
-                currentDir =
-                    reflectRay(
-                        currentDir,
-                        outwardNormal
-                    );
-
-                currentPoint = {
-
-                    x:
-                        nextHit.point.x +
-                        currentDir.x * 0.01,
-
-                    y:
-                        nextHit.point.y +
-                        currentDir.y * 0.01
-
-                };
-
-                continue;
-
-            }
-
-            /*
-             * 프리즘 밖으로 출사
-             */
-            drawLine(
-                nextHit.point,
-                add(
-                    nextHit.point,
-                    mul(
-                        exitRefraction.ray,
-                        800
-                    )
-                ),
-                "#e53935",
-                4
-            );
-
-            return;
-
-        }
 
     }
 
