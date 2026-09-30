@@ -2,7 +2,7 @@ import streamlit as str_module
 import streamlit.components.v1 as components
 
 str_module.set_page_config(
-    page_title="렌즈,거울,프리즘 실험해보기 (완벽 물리 광선 정밀 교정)",
+    page_title="렌즈,거울,프리즘 실험해보기 (광학 기구 완벽 물리 연동)",
     page_icon="🔬",
     layout="wide"
 )
@@ -242,22 +242,21 @@ function drawAxis() {
     drawText("광축", 1015, axisY - 10, 13, "#888");
 }
 
-/* --- 렌즈 곡선 데이터 계산 함수 (시각 및 물리 연동 일치) --- */
+/* --- 렌즈 기하학 스펙 (시각/물리 완벽 동기화) --- */
 function getLensGeometry() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
     const th = parseFloat(lensThickness.value);
-    // 곡률 반 반지름 R 계산 (구면 방정식 기반)
     const R = ( (h/2)*(h/2) + (th/2)*(th/2) ) / th;
     return { x, h, th, R };
 }
 
 function drawConvexLens() {
-    const geom = getLensGeometry();
+    const g = getLensGeometry();
     ctx.beginPath();
-    ctx.moveTo(geom.x - geom.th/2, axisY - geom.h/2);
-    ctx.quadraticCurveTo(geom.x + geom.th/2, axisY, geom.x - geom.th/2, axisY + geom.h/2);
-    ctx.quadraticCurveTo(geom.x - geom.th*1.5, axisY, geom.x - geom.th/2, axisY - geom.h/2);
+    ctx.moveTo(g.x - g.th/2, axisY - g.h/2);
+    ctx.quadraticCurveTo(g.x + g.th/2, axisY, g.x - g.th/2, axisY + g.h/2);
+    ctx.quadraticCurveTo(g.x - g.th*1.5, axisY, g.x - g.th/2, axisY - g.h/2);
     ctx.fillStyle = "rgba(100, 200, 255, 0.35)";
     ctx.fill();
     ctx.strokeStyle = "#0288d1";
@@ -266,13 +265,13 @@ function drawConvexLens() {
 }
 
 function drawConcaveLens() {
-    const geom = getLensGeometry();
+    const g = getLensGeometry();
     ctx.beginPath();
-    ctx.moveTo(geom.x - geom.th*1.2, axisY - geom.h/2);
-    ctx.lineTo(geom.x + geom.th*0.3, axisY - geom.h/2);
-    ctx.quadraticCurveTo(geom.x - geom.th*0.5, axisY, geom.x + geom.th*0.3, axisY + geom.h/2);
-    ctx.lineTo(geom.x - geom.th*1.2, axisY + geom.h/2);
-    ctx.quadraticCurveTo(geom.x - geom.th*0.5, axisY, geom.x - geom.th*1.2, axisY - geom.h/2);
+    ctx.moveTo(g.x - g.th*1.2, axisY - g.h/2);
+    ctx.lineTo(g.x + g.th*0.3, axisY - g.h/2);
+    ctx.quadraticCurveTo(g.x - g.th*0.5, axisY, g.x + g.th*0.3, axisY + g.h/2);
+    ctx.lineTo(g.x - g.th*1.2, axisY + g.h/2);
+    ctx.quadraticCurveTo(g.x - g.th*0.5, axisY, g.x - g.th*1.2, axisY - g.h/2);
     ctx.fillStyle = "rgba(100, 200, 255, 0.35)";
     ctx.fill();
     ctx.strokeStyle = "#0288d1";
@@ -374,8 +373,6 @@ function rayCircleIntersectionStrict(p, d, specs) {
     for (let t of ts) {
         const hit = add(p, mul(d, t));
         const angle = Math.atan2(hit.y - specs.cy, hit.x - specs.cx);
-        
-        // 각도 범위 검증 (오목/볼록 거울 완벽 대응)
         let sa = specs.startAngle;
         let ea = specs.endAngle;
         let ang = angle;
@@ -391,8 +388,8 @@ function rayCircleIntersectionStrict(p, d, specs) {
     return null;
 }
 
-/* --- 렌즈 구면 교차 정밀 연산 함수 --- */
-function rayLensSurfaceIntersection(p, d, circleX, circleY, R, isFront, isConvex) {
+/* --- 렌즈 표면 정밀 교차 연산 (볼록/오목 완벽 대응) --- */
+function rayLensSurfaceIntersection(p, d, circleX, circleY, R, hLimit) {
     const L = sub(p, { x: circleX, y: circleY });
     const A = 1;
     const B = 2 * dot(L, d);
@@ -405,8 +402,6 @@ function rayLensSurfaceIntersection(p, d, circleX, circleY, R, isFront, isConvex
     let ts = [t1, t2].filter(t => t > 1e-4);
     if (ts.length === 0) return null;
     ts.sort((a,b) => a - b);
-
-    const hLimit = parseFloat(deviceSize.value) / 2;
 
     for (let t of ts) {
         const hit = add(p, mul(d, t));
@@ -437,14 +432,13 @@ function refract(incident, normal, n1, n2) {
     return { ray: normalize({ x: rx, y: ry }), tir: false };
 }
 
-/* --- 완벽하게 교정된 물리 광선 추적 함수 --- */
+/* --- 광선 추적 본체 --- */
 function traceRays() {
     const type = objectType.value;
     const ox = objectXPos;
     const p = { x: laser.x, y: laser.y };
     const d = normalize({ x: Math.cos(laser.angle), y: Math.sin(laser.angle) });
     const hLimit = parseFloat(deviceSize.value) / 2;
-    const th = parseFloat(lensThickness.value);
 
     if (Math.abs(d.x) < 1e-5) {
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
@@ -455,26 +449,26 @@ function traceRays() {
     drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
     if (type === "convexLens") {
-        const geom = getLensGeometry();
-        // 볼록렌즈 앞면/뒷면 곡선 중심점 좌표
-        const frontCircleX = geom.x - geom.R + geom.th/2;
-        const backCircleX = geom.x + geom.R - geom.th/2;
+        const g = getLensGeometry();
+        // 볼록렌즈: 앞면은 중심이 오른쪽(+), 뒷면은 중심이 왼쪽(-)인 구면
+        const frontCx = g.x + g.th/2 - g.R;
+        const backCx = g.x - g.th/2 + g.R;
 
-        const hitInRes = rayLensSurfaceIntersection(p, d, frontCircleX, axisY, geom.R, true, true);
+        const hitInRes = rayLensSurfaceIntersection(p, d, frontCx, axisY, g.R, hLimit);
         if (hitInRes) {
             const hitIn = hitInRes.point;
             drawLine(p, hitIn, "#e53935", 4);
 
-            const normal1 = normalize(sub(hitIn, { x: frontCircleX, y: axisY }));
+            const normal1 = normalize(sub(hitIn, { x: frontCx, y: axisY }));
             const ref1 = refract(d, normal1, 1.0, 1.5);
             const internalRay = ref1.ray;
 
-            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCircleX, axisY, geom.R, false, true);
+            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCx, axisY, g.R, hLimit);
             if (hitOutRes) {
                 const hitOut = hitOutRes.point;
                 drawLine(hitIn, hitOut, "#e53935", 4);
 
-                const normal2 = normalize(sub({ x: backCircleX, y: axisY }, hitOut));
+                const normal2 = normalize(sub({ x: backCx, y: axisY }, hitOut));
                 const ref2 = refract(internalRay, normal2, 1.5, 1.0);
                 const finalRay = ref2.ray;
 
@@ -485,25 +479,26 @@ function traceRays() {
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
     else if (type === "concaveLens") {
-        const geom = getLensGeometry();
-        const frontCircleX = geom.x + geom.R - geom.th/2;
-        const backCircleX = geom.x - geom.R + geom.th/2;
+        const g = getLensGeometry();
+        // 오목렌즈: 앞면은 중심이 왼쪽(-), 뒷면은 중심이 오른쪽(+)인 구면
+        const frontCx = g.x - g.th/2 + g.R;
+        const backCx = g.x + g.th/2 - g.R;
 
-        const hitInRes = rayLensSurfaceIntersection(p, d, frontCircleX, axisY, geom.R, true, false);
+        const hitInRes = rayLensSurfaceIntersection(p, d, frontCx, axisY, g.R, hLimit);
         if (hitInRes) {
             const hitIn = hitInRes.point;
             drawLine(p, hitIn, "#e53935", 4);
 
-            const normal1 = normalize(sub({ x: frontCircleX, y: axisY }, hitIn));
+            const normal1 = normalize(sub({ x: frontCx, y: axisY }, hitIn));
             const ref1 = refract(d, normal1, 1.0, 1.5);
             const internalRay = ref1.ray;
 
-            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCircleX, axisY, geom.R, false, false);
+            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCx, axisY, g.R, hLimit);
             if (hitOutRes) {
                 const hitOut = hitOutRes.point;
                 drawLine(hitIn, hitOut, "#e53935", 4);
 
-                const normal2 = normalize(sub(hitOut, { x: backCircleX, y: axisY }));
+                const normal2 = normalize(sub(hitOut, { x: backCx, y: axisY }));
                 const ref2 = refract(internalRay, normal2, 1.5, 1.0);
                 const finalRay = ref2.ray;
 
@@ -612,7 +607,6 @@ function traceRays() {
                 let normal2 = normalize({ x: vFace2.y, y: -vFace2.x });
                 if (dot(rRay1, normal2) > 0) normal2 = { x: -normal2.x, y: -normal2.y };
 
-                // 프리즘 내부(1.5)에서 외부(1.0)로 나갈 때의 정확한 굴절 연동
                 const ref2 = refract(rRay1, normal2, 1.5, 1.0);
                 const rRay2 = ref2.ray;
 
