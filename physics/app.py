@@ -343,10 +343,8 @@ function rayCircleIntersection(p, d, circleCenter, radius) {
     const C = dot(L, L) - radius * radius;
     const disc = B * B - 4 * A * C;
     if (disc < 0) return null;
-    
     const t1 = (-B - Math.sqrt(disc)) / (2 * A);
     const t2 = (-B + Math.sqrt(disc)) / (2 * A);
-    
     let ts = [t1, t2].filter(t => t > 0);
     if (ts.length === 0) return null;
     ts.sort((a,b) => a - b);
@@ -390,30 +388,31 @@ function traceRays() {
     // 직진했을 때의 원래 경로 점선 (배경)
     drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
-    if (type === "convexLens") {
-        // 볼록렌즈 구면 방정식 기반 정확한 2회 굴절 연산
-        const R_lens = Math.max(th, ((hLimit)*(hLimit) + (th/2)*(th/2)) / th);
-        const frontCenter = { x: ox + R_lens - th/2, y: axisY };
-        const backCenter = { x: ox - R_lens + th/2, y: axisY };
+    if (type === "convexLens" || type === "concaveLens") {
+        // 렌즈 입사면/출사면 정확한 2회 굴절 연산
+        const frontX = ox - th/2;
+        const backX = ox + th/2;
+        const tFront = (frontX - p.x) / d.x;
 
-        const t1 = rayCircleIntersection(p, d, frontCenter, R_lens);
-        if (t1 !== null) {
-            const hitIn = add(p, mul(d, t1));
+        if (tFront > 0) {
+            const hitIn = add(p, mul(d, tFront));
             if (Math.abs(hitIn.y - axisY) <= hLimit) {
                 drawLine(p, hitIn, "#e53935", 4); // 1. 입사 전 광선
 
-                // 1차 굴절 (공기 -> 렌즈 내부 n=1.5)
-                const normal1 = normalize(sub(frontCenter, hitIn));
+                const normal1 = type === "convexLens" ? 
+                    normalize({ x: -1, y: -(hitIn.y - axisY) / hLimit }) : 
+                    normalize({ x: 1, y: (hitIn.y - axisY) / hLimit });
                 const ref1 = refract(d, normal1, 1.0, 1.5);
                 const internalRay = ref1.ray;
 
-                const t2 = rayCircleIntersection(hitIn, internalRay, backCenter, R_lens);
-                if (t2 !== null) {
-                    const hitOut = add(hitIn, mul(internalRay, t2));
+                const tBack = (backX - hitIn.x) / internalRay.x;
+                if (tBack > 0) {
+                    const hitOut = add(hitIn, mul(internalRay, tBack));
                     drawLine(hitIn, hitOut, "#e53935", 4); // 2. 렌즈 내부 통과 광선
 
-                    // 2차 굴절 (렌즈 내부 n=1.5 -> 공기)
-                    const normal2 = normalize(sub(hitOut, backCenter));
+                    const normal2 = type === "convexLens" ? 
+                        normalize({ x: 1, y: (hitOut.y - axisY) / hLimit }) : 
+                        normalize({ x: -1, y: -(hitOut.y - axisY) / hLimit });
                     const ref2 = refract(internalRay, normal2, 1.5, 1.0);
                     const finalRay = ref2.ray;
 
@@ -424,50 +423,19 @@ function traceRays() {
         }
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     } 
-    else if (type === "concaveLens") {
-        // 오목렌즈 구면 방정식 기반 정확한 2회 굴절 연산
-        const R_lens = Math.max(th, ((hLimit)*(hLimit) + (th/2)*(th/2)) / th);
-        const frontCenter = { x: ox - R_lens - th/2, y: axisY };
-        const backCenter = { x: ox + R_lens + th/2, y: axisY };
-
-        const t1 = rayCircleIntersection(p, d, frontCenter, R_lens);
-        if (t1 !== null) {
-            const hitIn = add(p, mul(d, t1));
-            if (Math.abs(hitIn.y - axisY) <= hLimit) {
-                drawLine(p, hitIn, "#e53935", 4); // 1. 입사 전 광선
-
-                const normal1 = normalize(sub(hitIn, frontCenter));
-                const ref1 = refract(d, normal1, 1.0, 1.5);
-                const internalRay = ref1.ray;
-
-                const t2 = rayCircleIntersection(hitIn, internalRay, backCenter, R_lens);
-                if (t2 !== null) {
-                    const hitOut = add(hitIn, mul(internalRay, t2));
-                    drawLine(hitIn, hitOut, "#e53935", 4); // 2. 렌즈 내부 통과 광선
-
-                    const normal2 = normalize(sub(backCenter, hitOut));
-                    const ref2 = refract(internalRay, normal2, 1.5, 1.0);
-                    const finalRay = ref2.ray;
-
-                    drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4); // 3. 최종 출사 광선
-                    return;
-                }
-            }
-        }
-        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
-    }
     else if (type === "planeMirror") {
         const t = (ox - p.x) / d.x;
         const hitPoint = add(p, mul(d, t));
+        // 거울 범위 내에 닿을 때만 반사, 벗어나면 직진
         if (t > 0 && Math.abs(hitPoint.y - axisY) <= hLimit) {
             drawLine(p, hitPoint, "#e53935", 4);
             const n = { x: -1, y: 0 };
             const dotND = dot(d, n);
             const outDir = { x: d.x - 2 * dotND * n.x, y: d.y - 2 * dotND * n.y };
             drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
-        } else {
-            drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+            return;
         }
+        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
     else if (type === "concaveMirror") {
         const R = parseFloat(radius.value);
@@ -512,44 +480,61 @@ function traceRays() {
         const Vtop = { x: ox, y: axisY - height / 2 };
         const Vbr = { x: ox + base / 2, y: axisY + height / 2 };
 
-        // 프리즘의 모든 면(좌측면, 우측면, 밑면)에서 교차점을 정확히 검출하도록 확장
-        let inter1 = getSegmentIntersection(p, d, Vbl, Vtop);
-        let secondFaceA = Vtop, secondFaceB = Vbr;
-        let isLeftToRight = true;
+        // 프리즘의 모든 면(좌측면, 우측면, 밑면) 검출을 위한 삼각 모서리 리스트
+        const edges = [
+            { a: Vbl, b: Vtop, nextA: Vtop, nextB: Vbr },
+            { a: Vtop, b: Vbr, nextA: Vbl, nextB: Vtop },
+            { a: Vbl, b: Vbr, nextA: Vtop, nextB: Vbl }
+        ];
 
-        if (!inter1) {
-            inter1 = getSegmentIntersection(p, d, Vtop, Vbr);
-            secondFaceA = Vbl; secondFaceB = Vtop;
-            isLeftToRight = false;
-        }
-        if (!inter1) {
-            inter1 = getSegmentIntersection(p, d, Vbl, Vbr);
-            secondFaceA = Vtop; secondFaceB = Vbl;
-            isLeftToRight = false;
+        let firstHit = null;
+        let matchedEdge = null;
+
+        for (let edge of edges) {
+            const inter = getSegmentIntersection(p, d, edge.a, edge.b);
+            if (inter) {
+                if (!firstHit || inter.t < firstHit.t) {
+                    firstHit = inter;
+                    matchedEdge = edge;
+                }
+            }
         }
 
-        if (inter1) {
-            drawLine(p, inter1.point, "#e53935", 4);
+        if (firstHit && matchedEdge) {
+            drawLine(p, firstHit.point, "#e53935", 4);
             
-            let vFace1 = isLeftToRight ? sub(Vtop, Vbl) : sub(Vbr, Vtop);
+            const vFace1 = sub(matchedEdge.b, matchedEdge.a);
             let normal1 = normalize({ x: -vFace1.y, y: vFace1.x });
             if (dot(d, normal1) > 0) normal1 = { x: -normal1.x, y: -normal1.y };
 
             const ref1 = refract(d, normal1, 1.0, 1.5);
             const rRay1 = ref1.ray;
 
-            const inter2 = getSegmentIntersection(inter1.point, rRay1, secondFaceA, secondFaceB);
-            if (inter2) {
-                drawLine(inter1.point, inter2.point, "#e53935", 4);
+            // 출사면 교차점 찾기 (나머지 두 면 검사)
+            let secondHit = null;
+            let secondFace = null;
+            for (let edge of edges) {
+                if (edge === matchedEdge) continue;
+                const inter2 = getSegmentIntersection(firstHit.point, rRay1, edge.a, edge.b);
+                if (inter2) {
+                    if (!secondHit || inter2.t < secondHit.t) {
+                        secondHit = inter2;
+                        secondFace = edge;
+                    }
+                }
+            }
 
-                let vFace2 = sub(secondFaceB, secondFaceA);
+            if (secondHit && secondFace) {
+                drawLine(firstHit.point, secondHit.point, "#e53935", 4);
+
+                const vFace2 = sub(secondFace.b, secondFace.a);
                 let normal2 = normalize({ x: vFace2.y, y: -vFace2.x });
                 if (dot(rRay1, normal2) > 0) normal2 = { x: -normal2.x, y: -normal2.y };
 
                 const ref2 = refract(rRay1, normal2, 1.5, 1.0);
                 const rRay2 = ref2.ray;
 
-                drawLine(inter2.point, add(inter2.point, mul(rRay2, 800)), "#e53935", 4);
+                drawLine(secondHit.point, add(secondHit.point, mul(rRay2, 800)), "#e53935", 4);
                 return;
             }
         }
