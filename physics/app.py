@@ -1322,13 +1322,6 @@ function traceRays() {
 
             drawLine(
                 hitIn,
-                hitOut,
-                "#e53935",
-                4
-            );
-
-            drawLine(
-                hitOut,
                 focus,
                 "#e53935",
                 4
