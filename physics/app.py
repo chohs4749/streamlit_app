@@ -284,23 +284,39 @@ function drawPlaneMirror() {
     }
 }
 
-function drawConcaveMirror() {
+function getConcaveMirrorSpecs() {
     const x = objectXPos;
     const h = parseFloat(deviceSize.value);
     const R = parseFloat(radius.value);
+    // 오목거울의 실제 곡률 중심: 표면보다 왼쪽에 위치해야 함 (x - R)
+    const cx = x - R;
+    const halfAngle = Math.asin(Math.min(1, h / (2 * R)));
+    return { cx, cy: axisY, R, startAngle: -halfAngle, endAngle: halfAngle, surfaceX: x };
+}
+
+function getConvexMirrorSpecs() {
+    const x = objectXPos;
+    const h = parseFloat(deviceSize.value);
+    const R = parseFloat(radius.value);
+    // 볼록거울의 실제 곡률 중심: 표면보다 오른쪽에 위치해야 함 (x + R)
+    const cx = x + R;
+    const halfAngle = Math.asin(Math.min(1, h / (2 * R)));
+    return { cx, cy: axisY, R, startAngle: Math.PI - halfAngle, endAngle: Math.PI + halfAngle, surfaceX: x };
+}
+
+function drawConcaveMirror() {
+    const specs = getConcaveMirrorSpecs();
     ctx.beginPath();
-    ctx.arc(x + R, axisY, R, Math.PI - Math.asin(Math.min(1, h/(2*R))), Math.PI + Math.asin(Math.min(1, h/(2*R))));
+    ctx.arc(specs.cx, specs.cy, specs.R, specs.startAngle, specs.endAngle);
     ctx.strokeStyle = "#37474f";
     ctx.lineWidth = 5;
     ctx.stroke();
 }
 
 function drawConvexMirror() {
-    const x = objectXPos;
-    const h = parseFloat(deviceSize.value);
-    const R = parseFloat(radius.value);
+    const specs = getConvexMirrorSpecs();
     ctx.beginPath();
-    ctx.arc(x - R, axisY, R, -Math.asin(Math.min(1, h/(2*R))), Math.asin(Math.min(1, h/(2*R))));
+    ctx.arc(specs.cx, specs.cy, specs.R, specs.startAngle, specs.endAngle);
     ctx.strokeStyle = "#37474f";
     ctx.lineWidth = 5;
     ctx.stroke();
@@ -336,19 +352,32 @@ function getSegmentIntersection(p, d, a, b) {
     return null;
 }
 
-function rayCircleIntersection(p, d, circleCenter, radius) {
-    const L = sub(p, circleCenter);
+function rayCircleIntersectionStrict(p, d, specs) {
+    const L = sub(p, { x: specs.cx, y: specs.cy });
     const A = 1;
     const B = 2 * dot(L, d);
-    const C = dot(L, L) - radius * radius;
+    const C = dot(L, L) - specs.R * specs.R;
     const disc = B * B - 4 * A * C;
     if (disc < 0) return null;
+    
     const t1 = (-B - Math.sqrt(disc)) / (2 * A);
     const t2 = (-B + Math.sqrt(disc)) / (2 * A);
     let ts = [t1, t2].filter(t => t > 0);
     if (ts.length === 0) return null;
     ts.sort((a,b) => a - b);
-    return ts[0];
+
+    for (let t of ts) {
+        const hit = add(p, mul(d, t));
+        const angle = Math.atan2(hit.y - specs.cy, hit.x - specs.cx);
+        // 해당 각도가 거울 아크 범위 내에 있는지 정확히 검증
+        let normalizedAngle = angle;
+        if (specs.startAngle < 0 && normalizedAngle > Math.PI) normalizedAngle -= 2 * Math.PI;
+        
+        if (normalizedAngle >= specs.startAngle - 0.01 && normalizedAngle <= specs.endAngle + 0.01) {
+            return { t, point: hit };
+        }
+    }
+    return null;
 }
 
 function refract(incident, normal, n1, n2) {
@@ -371,7 +400,7 @@ function refract(incident, normal, n1, n2) {
     return { ray: normalize({ x: rx, y: ry }), tir: false };
 }
 
-/* --- 엄격한 경계면 전용 물리 연산 --- */
+/* --- 오직 경계면에서만 100% 작동하는 물리 연산 --- */
 function traceRays() {
     const type = objectType.value;
     const ox = objectXPos;
@@ -389,32 +418,30 @@ function traceRays() {
     drawLine(p, add(p, mul(d, 1000)), "#ff9800", 2, true);
 
     if (type === "convexLens") {
-        // 볼록렌즈 입사면(첫 번째 곡선 표면) 정확한 교차점 추정
         const frontX = ox - th/2;
         const t = (frontX - p.x) / d.x;
         if (t > 0) {
             const hitIn = add(p, mul(d, t));
             if (Math.abs(hitIn.y - axisY) <= hLimit) {
-                drawLine(p, hitIn, "#e53935", 4); // 1. 입사면까지 직진
+                drawLine(p, hitIn, "#e53935", 4);
 
                 const yRatio = (hitIn.y - axisY) / hLimit;
                 const normal1 = normalize({ x: -1, y: -yRatio * 0.8 });
                 const ref1 = refract(d, normal1, 1.0, 1.5);
                 const internalRay = ref1.ray;
 
-                // 볼록렌즈 출사면(두 번째 곡선 표면) 정확한 교차점 추정
                 const backX = ox + th/2;
                 const tBack = (backX - hitIn.x) / internalRay.x;
                 if (tBack > 0) {
                     const hitOut = add(hitIn, mul(internalRay, tBack));
-                    drawLine(hitIn, hitOut, "#e53935", 4); // 2. 렌즈 내부 통과
+                    drawLine(hitIn, hitOut, "#e53935", 4);
 
                     const outYRatio = (hitOut.y - axisY) / hLimit;
                     const normal2 = normalize({ x: 1, y: outYRatio * 0.8 });
                     const ref2 = refract(internalRay, normal2, 1.5, 1.0);
                     const finalRay = ref2.ray;
 
-                    drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4); // 3. 최종 출사
+                    drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4);
                     return;
                 }
             }
@@ -422,32 +449,30 @@ function traceRays() {
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
     else if (type === "concaveLens") {
-        // 오목렌즈 입사면(첫 번째 경계)
         const frontX = ox - th;
         const t = (frontX - p.x) / d.x;
         if (t > 0) {
             const hitIn = add(p, mul(d, t));
             if (Math.abs(hitIn.y - axisY) <= hLimit) {
-                drawLine(p, hitIn, "#e53935", 4); // 1. 입사면까지 직진
+                drawLine(p, hitIn, "#e53935", 4);
 
                 const yRatio = (hitIn.y - axisY) / hLimit;
                 const normal1 = normalize({ x: 1, y: yRatio * 0.8 });
                 const ref1 = refract(d, normal1, 1.0, 1.5);
                 const internalRay = ref1.ray;
 
-                // 오목렌즈 출사면(두 번째 경계)
                 const backX = ox;
                 const tBack = (backX - hitIn.x) / internalRay.x;
                 if (tBack > 0) {
                     const hitOut = add(hitIn, mul(internalRay, tBack));
-                    drawLine(hitIn, hitOut, "#e53935", 4); // 2. 렌즈 내부 통과
+                    drawLine(hitIn, hitOut, "#e53935", 4);
 
                     const outYRatio = (hitOut.y - axisY) / hLimit;
                     const normal2 = normalize({ x: -1, y: -outYRatio * 0.8 });
                     const ref2 = refract(internalRay, normal2, 1.5, 1.0);
                     const finalRay = ref2.ray;
 
-                    drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4); // 3. 최종 출사
+                    drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4);
                     return;
                 }
             }
@@ -468,38 +493,32 @@ function traceRays() {
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
     else if (type === "concaveMirror") {
-        const R = parseFloat(radius.value);
-        const center = { x: ox + R, y: axisY };
-        const t = rayCircleIntersection(p, d, center, R);
-        if (t !== null) {
-            const actualHit = add(p, mul(d, t));
-            // 정확히 오목거울 표면에 닿을 때만 반사 (통과 불가)
-            if (Math.abs(actualHit.y - axisY) <= hLimit && actualHit.x <= ox + 2 && actualHit.x >= ox - R) {
-                drawLine(p, actualHit, "#e53935", 4);
-                const normal = normalize(sub(center, actualHit));
-                const dotND = dot(d, normal);
-                const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
-                drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
-                return;
-            }
+        const specs = getConcaveMirrorSpecs();
+        const hitResult = rayCircleIntersectionStrict(p, d, specs);
+        if (hitResult !== null) {
+            const actualHit = hitResult.point;
+            drawLine(p, actualHit, "#e53935", 4);
+            // 오목거울 법선 벡터 (중심에서 표면 방향)
+            const normal = normalize(sub(actualHit, { x: specs.cx, y: specs.cy }));
+            const dotND = dot(d, normal);
+            const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
+            drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
+            return;
         }
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
     else if (type === "convexMirror") {
-        const R = parseFloat(radius.value);
-        const center = { x: ox - R, y: axisY };
-        const t = rayCircleIntersection(p, d, center, R);
-        if (t !== null) {
-            const actualHit = add(p, mul(d, t));
-            // 정확히 볼록거울 표면에 닿을 때만 반사 (통과 불가)
-            if (Math.abs(actualHit.y - axisY) <= hLimit && actualHit.x <= ox + 2 && actualHit.x >= ox - R) {
-                drawLine(p, actualHit, "#e53935", 4);
-                const normal = normalize(sub(actualHit, center));
-                const dotND = dot(d, normal);
-                const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
-                drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
-                return;
-            }
+        const specs = getConvexMirrorSpecs();
+        const hitResult = rayCircleIntersectionStrict(p, d, specs);
+        if (hitResult !== null) {
+            const actualHit = hitResult.point;
+            drawLine(p, actualHit, "#e53935", 4);
+            // 볼록거울 법선 벡터 (표면에서 중심 방향)
+            const normal = normalize(sub({ x: specs.cx, y: specs.cy }, actualHit));
+            const dotND = dot(d, normal);
+            const outDir = { x: d.x - 2 * dotND * normal.x, y: d.y - 2 * dotND * normal.y };
+            drawLine(actualHit, add(actualHit, mul(outDir, 800)), "#e53935", 4);
+            return;
         }
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
