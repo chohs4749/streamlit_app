@@ -448,9 +448,9 @@ function traceRays() {
 
     if (type === "convexLens") {
         const g = getLensGeometry();
-        // 볼록렌즈: 입사면은 오른쪽이 중심, 출사면은 왼쪽이 중심인 구면
-        const frontCx = g.x + g.th/2 - g.R;
-        const backCx = g.x - g.th/2 + g.R;
+        // 볼록렌즈 구면 중심 정의 (입사면: 왼쪽 중심, 출사면: 오른쪽 중심) -> 빛이 안쪽으로 꺾여 초점으로 수렴
+        const frontCx = g.x - g.th/2 + g.R;
+        const backCx = g.x + g.th/2 - g.R;
 
         const hitInRes = rayLensSurfaceIntersection(p, d, frontCx, axisY, g.R, hLimit);
         if (hitInRes) {
@@ -478,9 +478,9 @@ function traceRays() {
     }
     else if (type === "concaveLens") {
         const g = getLensGeometry();
-        // 오목렌즈: 입사면은 왼쪽이 중심, 출사면은 오른쪽이 중심인 구면
-        const frontCx = g.x - g.th/2 + g.R;
-        const backCx = g.x + g.th/2 - g.R;
+        // 오목렌즈 구면 중심 정의 (입사면: 오른쪽 중심, 출사면: 왼쪽 중심) -> 빛이 바깥쪽으로 발산
+        const frontCx = g.x + g.th/2 - g.R;
+        const backCx = g.x - g.th/2 + g.R;
 
         const hitInRes = rayLensSurfaceIntersection(p, d, frontCx, axisY, g.R, hLimit);
         if (hitInRes) {
