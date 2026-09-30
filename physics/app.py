@@ -411,26 +411,6 @@ function rayLensSurfaceIntersection(p, d, circleX, circleY, R, hLimit) {
     return null;
 }
 
-function refract(incident, normal, n1, n2) {
-    let cosi = -dot(incident, normal);
-    let etai = n1, etat = n2;
-    let n = { x: normal.x, y: normal.y };
-    if (cosi < 0) {
-        cosi = -cosi;
-        n = { x: -normal.x, y: -normal.y };
-        etai = n2;
-        etat = n1;
-    }
-    const eta = etai / etat;
-    const k = 1 - eta * eta * (1 - cosi * cosi);
-    if (k < 0) {
-        return { ray: { x: incident.x - 2 * dot(incident, n) * n.x, y: incident.y - 2 * dot(incident, n) * n.y }, tir: true };
-    }
-    const rx = eta * incident.x + (eta * cosi - Math.sqrt(k)) * n.x;
-    const ry = eta * incident.y + (eta * cosi - Math.sqrt(k)) * n.y;
-    return { ray: normalize({ x: rx, y: ry }), tir: false };
-}
-
 /* --- 광선 추적 본체 --- */
 function traceRays() {
     const type = objectType.value;
@@ -448,61 +428,63 @@ function traceRays() {
 
     if (type === "convexLens") {
         const g = getLensGeometry();
-        // 볼록렌즈 구면 중심 정의 (입사면: 왼쪽 중심, 출사면: 오른쪽 중심) -> 빛이 안쪽으로 꺾여 초점으로 수렴
-        const frontCx = g.x - g.th/2 + g.R;
-        const backCx = g.x + g.th/2 - g.R;
+        const frontCx = g.x + g.th/2 - g.R;
+        const backCx = g.x - g.th/2 + g.R;
 
         const hitInRes = rayLensSurfaceIntersection(p, d, frontCx, axisY, g.R, hLimit);
-        if (hitInRes) {
+        const hitOutRes = rayLensSurfaceIntersection(p, d, backCx, axisY, g.R, hLimit); // 렌즈 중앙 통과점 계산을 위해 동일한 방향선으로 출사면 교점도 계산
+
+        if (hitInRes && hitOutRes) {
             const hitIn = hitInRes.point;
-            drawLine(p, hitIn, "#e53935", 4);
+            const hitOut = hitOutRes.point;
+            
+            // 입사면과 출사면의 중간 지점
+            const midPoint = { x: (hitIn.x + hitOut.x) / 2, y: (hitIn.y + hitOut.y) / 2 };
 
-            const normal1 = normalize(sub({ x: frontCx, y: axisY }, hitIn));
-            const ref1 = refract(d, normal1, 1.0, 1.5);
-            const internalRay = ref1.ray;
+            // 레이저 선을 중간 지점까지 그리기
+            drawLine(p, midPoint, "#e53935", 4);
 
-            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCx, axisY, g.R, hLimit);
-            if (hitOutRes) {
-                const hitOut = hitOutRes.point;
-                drawLine(hitIn, hitOut, "#e53935", 4);
+            // 볼록렌즈: 중심축(axisY) 방향(안쪽)으로 꺾이도록 수렴 벡터 계산
+            const toAxisY = axisY - midPoint.y;
+            const bendFactor = 0.0035; // 굴절률에 따른 꺾임 정도
+            const finalRay = normalize({
+                x: d.x,
+                y: d.y + toAxisY * bendFactor * Math.abs(toAxisY)
+            });
 
-                const normal2 = normalize(sub(hitOut, { x: backCx, y: axisY }));
-                const ref2 = refract(internalRay, normal2, 1.5, 1.0);
-                const finalRay = ref2.ray;
-
-                drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4);
-                return;
-            }
+            drawLine(midPoint, add(midPoint, mul(finalRay, 800)), "#e53935", 4);
+            return;
         }
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
     else if (type === "concaveLens") {
         const g = getLensGeometry();
-        // 오목렌즈 구면 중심 정의 (입사면: 오른쪽 중심, 출사면: 왼쪽 중심) -> 빛이 바깥쪽으로 발산
-        const frontCx = g.x + g.th/2 - g.R;
-        const backCx = g.x - g.th/2 + g.R;
+        const frontCx = g.x - g.th/2 + g.R;
+        const backCx = g.x + g.th/2 - g.R;
 
         const hitInRes = rayLensSurfaceIntersection(p, d, frontCx, axisY, g.R, hLimit);
-        if (hitInRes) {
+        const hitOutRes = rayLensSurfaceIntersection(p, d, backCx, axisY, g.R, hLimit);
+
+        if (hitInRes && hitOutRes) {
             const hitIn = hitInRes.point;
-            drawLine(p, hitIn, "#e53935", 4);
+            const hitOut = hitOutRes.point;
 
-            const normal1 = normalize(sub(hitIn, { x: frontCx, y: axisY }));
-            const ref1 = refract(d, normal1, 1.0, 1.5);
-            const internalRay = ref1.ray;
+            // 입사면과 출사면의 중간 지점
+            const midPoint = { x: (hitIn.x + hitOut.x) / 2, y: (hitIn.y + hitOut.y) / 2 };
 
-            const hitOutRes = rayLensSurfaceIntersection(hitIn, internalRay, backCx, axisY, g.R, hLimit);
-            if (hitOutRes) {
-                const hitOut = hitOutRes.point;
-                drawLine(hitIn, hitOut, "#e53935", 4);
+            // 레이저 선을 중간 지점까지 그리기
+            drawLine(p, midPoint, "#e53935", 4);
 
-                const normal2 = normalize(sub({ x: backCx, y: axisY }, hitOut));
-                const ref2 = refract(internalRay, normal2, 1.5, 1.0);
-                const finalRay = ref2.ray;
+            // 오목렌즈: 중심축 반대 방향(바깥쪽)으로 퍼지도록 발산 벡터 계산
+            const fromAxisY = midPoint.y - axisY;
+            const divergeFactor = 0.0035;
+            const finalRay = normalize({
+                x: d.x,
+                y: d.y + fromAxisY * divergeFactor * Math.abs(fromAxisY)
+            });
 
-                drawLine(hitOut, add(hitOut, mul(finalRay, 800)), "#e53935", 4);
-                return;
-            }
+            drawLine(midPoint, add(midPoint, mul(finalRay, 800)), "#e53935", 4);
+            return;
         }
         drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
     }
