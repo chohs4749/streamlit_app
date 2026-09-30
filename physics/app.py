@@ -24,6 +24,7 @@ html_code = r"""
 <meta charset="UTF-8">
 <style>
 * { box-sizing: border-box; }
+
 body {
     margin: 0;
     font-family: Arial, "Malgun Gothic", sans-serif;
@@ -94,113 +95,260 @@ input[type="range"] {
     gap: 7px;
 }
 
-.real-line { width: 40px; border-top: 4px solid #e53935; }
-.virtual-line { width: 40px; border-top: 2px dashed #ff9800; }
-.axis-line { width: 40px; border-top: 2px dashed #aaa; }
+.real-line {
+    width: 40px;
+    border-top: 4px solid #e53935;
+}
+
+.virtual-line {
+    width: 40px;
+    border-top: 2px dashed #ff9800;
+}
+
+.axis-line {
+    width: 40px;
+    border-top: 2px dashed #aaa;
+}
 </style>
 </head>
+
 <body>
 
 <div class="panel">
+
     <div class="control-grid">
         <label>광학 기구 선택</label>
+
         <select id="objectType">
             <optgroup label="렌즈">
                 <option value="convexLens">볼록렌즈</option>
                 <option value="concaveLens">오목렌즈</option>
             </optgroup>
+
             <optgroup label="거울">
                 <option value="planeMirror">평면거울</option>
                 <option value="concaveMirror">오목거울</option>
                 <option value="convexMirror">볼록거울</option>
             </optgroup>
+
             <option value="prism">프리즘</option>
         </select>
+
         <span></span>
     </div>
 
     <div class="control-grid">
         <label>기구 크기 (높이)</label>
-        <input id="deviceSize" type="range" min="120" max="360" value="220">
+
+        <input
+            id="deviceSize"
+            type="range"
+            min="120"
+            max="360"
+            value="220"
+        >
+
         <span id="deviceSizeValue" class="value">220</span>
     </div>
 
     <div id="lensThicknessRow" class="control-grid">
+
         <label>렌즈 두께</label>
-        <input id="lensThickness" type="range" min="20" max="70" value="40">
+
+        <input
+            id="lensThickness"
+            type="range"
+            min="20"
+            max="70"
+            value="40"
+        >
+
         <span id="lensThicknessValue" class="value">40</span>
+
     </div>
 
     <div id="radiusRow" class="control-grid" style="display:none;">
+
         <label>거울 곡률반지름 (R)</label>
-        <input id="radius" type="range" min="100" max="350" value="220">
+
+        <input
+            id="radius"
+            type="range"
+            min="100"
+            max="350"
+            value="220"
+        >
+
         <span id="radiusValue" class="value">220</span>
+
     </div>
 
     <div id="prismRow" class="control-grid" style="display:none;">
+
         <label>프리즘 꼭짓각</label>
-        <input id="prismAngle" type="range" min="30" max="80" value="60">
+
+        <input
+            id="prismAngle"
+            type="range"
+            min="30"
+            max="80"
+            value="60"
+        >
+
         <span id="prismAngleValue" class="value">60°</span>
+
     </div>
+
 </div>
 
 <div class="panel">
-    <canvas id="canvas" width="1100" height="680"></canvas>
+
+    <canvas
+        id="canvas"
+        width="1100"
+        height="680"
+    ></canvas>
+
     <div class="legend">
-        <div class="legend-item"><span class="real-line"></span> 실제 레이저 광선 (굴절/반사)</div>
-        <div class="legend-item"><span class="virtual-line"></span> 직진했을 때의 원래 경로 (점선)</div>
-        <div class="legend-item"><span class="axis-line"></span> 광축</div>
+
+        <div class="legend-item">
+            <span class="real-line"></span>
+            실제 레이저 광선 (굴절/반사)
+        </div>
+
+        <div class="legend-item">
+            <span class="virtual-line"></span>
+            직진했을 때의 원래 경로 (점선)
+        </div>
+
+        <div class="legend-item">
+            <span class="axis-line"></span>
+            광축
+        </div>
+
     </div>
+
 </div>
 
 <script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+
+const canvas =
+    document.getElementById("canvas");
+
+const ctx =
+    canvas.getContext("2d");
+
 const W = canvas.width;
 const H = canvas.height;
+
 const axisY = H / 2;
 
-const laser = { x: 90, y: axisY, angle: 0 };
+const laser = {
+    x: 90,
+    y: axisY,
+    angle: 0
+};
+
 let objectXPos = 650;
 
 let draggingLaserHandle = false;
 let draggingDevice = false;
 
-const objectType = document.getElementById("objectType");
-const deviceSize = document.getElementById("deviceSize");
-const lensThickness = document.getElementById("lensThickness");
-const radius = document.getElementById("radius");
-const prismAngle = document.getElementById("prismAngle");
+const objectType =
+    document.getElementById("objectType");
 
-const lensThicknessRow = document.getElementById("lensThicknessRow");
-const radiusRow = document.getElementById("radiusRow");
-const prismRow = document.getElementById("prismRow");
+const deviceSize =
+    document.getElementById("deviceSize");
+
+const lensThickness =
+    document.getElementById("lensThickness");
+
+const radius =
+    document.getElementById("radius");
+
+const prismAngle =
+    document.getElementById("prismAngle");
+
+const lensThicknessRow =
+    document.getElementById("lensThicknessRow");
+
+const radiusRow =
+    document.getElementById("radiusRow");
+
+const prismRow =
+    document.getElementById("prismRow");
+
 
 function add(a,b) {
-    return { x:a.x+b.x, y:a.y+b.y };
+
+    return {
+        x:a.x+b.x,
+        y:a.y+b.y
+    };
+
 }
+
 
 function sub(a,b) {
-    return { x:a.x-b.x, y:a.y-b.y };
+
+    return {
+        x:a.x-b.x,
+        y:a.y-b.y
+    };
+
 }
+
 
 function mul(a,k) {
-    return { x:a.x*k, y:a.y*k };
+
+    return {
+        x:a.x*k,
+        y:a.y*k
+    };
+
 }
+
 
 function length(a) {
-    return Math.sqrt(a.x*a.x + a.y*a.y);
+
+    return Math.sqrt(
+        a.x*a.x +
+        a.y*a.y
+    );
+
 }
+
 
 function normalize(a) {
+
     const l = length(a);
-    if(l === 0) return { x:1, y:0 };
-    return { x:a.x/l, y:a.y/l };
+
+    if(l === 0) {
+
+        return {
+            x:1,
+            y:0
+        };
+
+    }
+
+    return {
+        x:a.x/l,
+        y:a.y/l
+    };
+
 }
 
-function dot(a, b) {
-    return a.x*b.x + a.y*b.y;
+
+function dot(a,b) {
+
+    return (
+        a.x*b.x +
+        a.y*b.y
+    );
+
 }
+
 
 function drawLine(
     p1,
@@ -209,21 +357,34 @@ function drawLine(
     width=4,
     dashed=false
 ) {
+
     ctx.beginPath();
 
     ctx.setLineDash(
-        dashed ? [10,8] : []
+        dashed
+        ? [10,8]
+        : []
     );
 
-    ctx.moveTo(p1.x, p1.y);
-    ctx.lineTo(p2.x, p2.y);
+    ctx.moveTo(
+        p1.x,
+        p1.y
+    );
+
+    ctx.lineTo(
+        p2.x,
+        p2.y
+    );
 
     ctx.strokeStyle = color;
     ctx.lineWidth = width;
+
     ctx.stroke();
 
     ctx.setLineDash([]);
+
 }
+
 
 function drawText(
     value,
@@ -232,45 +393,72 @@ function drawText(
     size=15,
     color="#222"
 ) {
+
     ctx.fillStyle = color;
-    ctx.font = "bold " + size + "px Arial";
-    ctx.fillText(value, x, y);
+
+    ctx.font =
+        "bold " +
+        size +
+        "px Arial";
+
+    ctx.fillText(
+        value,
+        x,
+        y
+    );
+
 }
 
+
 function laserHandlePos() {
+
     return {
+
         x:
             laser.x +
-            Math.cos(laser.angle) * 75,
+            Math.cos(laser.angle)*75,
 
         y:
             laser.y +
-            Math.sin(laser.angle) * 75
+            Math.sin(laser.angle)*75
+
     };
+
 }
 
+
 function getCanvasMousePos(e) {
+
     const rect =
         canvas.getBoundingClientRect();
 
     const scaleX =
-        canvas.width / rect.width;
+        canvas.width /
+        rect.width;
 
     const scaleY =
-        canvas.height / rect.height;
+        canvas.height /
+        rect.height;
 
     return {
+
         x:
-            (e.clientX - rect.left) *
+            (e.clientX -
+             rect.left) *
             scaleX,
 
         y:
-            (e.clientY - rect.top) *
+            (e.clientY -
+             rect.top) *
             scaleY
+
     };
+
 }
 
+
 function drawLaserAndHandle() {
+
     ctx.beginPath();
 
     ctx.arc(
@@ -282,24 +470,29 @@ function drawLaserAndHandle() {
     );
 
     ctx.fillStyle = "#333";
+
     ctx.fill();
 
     ctx.strokeStyle = "#111";
     ctx.lineWidth = 3;
+
     ctx.stroke();
+
 
     const lHandle =
         laserHandlePos();
 
+
     drawLine(
         {
-            x: laser.x,
-            y: laser.y
+            x:laser.x,
+            y:laser.y
         },
         lHandle,
         "#fbc02d",
         12
     );
+
 
     ctx.beginPath();
 
@@ -312,19 +505,23 @@ function drawLaserAndHandle() {
     );
 
     ctx.fillStyle = "#ffdf3f";
+
     ctx.fill();
 
     ctx.strokeStyle = "#806000";
     ctx.lineWidth = 2;
+
     ctx.stroke();
+
 
     drawText(
         "레이저",
-        lHandle.x - 22,
-        lHandle.y - 20,
+        lHandle.x-22,
+        lHandle.y-20,
         11,
         "#555"
     );
+
 
     ctx.beginPath();
 
@@ -337,13 +534,23 @@ function drawLaserAndHandle() {
     );
 
     ctx.fillStyle = "#ff0000";
+
     ctx.fill();
+
 }
 
+
 function drawAxis() {
+
     drawLine(
-        {x:30, y:axisY},
-        {x:1070, y:axisY},
+        {
+            x:30,
+            y:axisY
+        },
+        {
+            x:1070,
+            y:axisY
+        },
         "#aaa",
         1,
         true
@@ -352,16 +559,28 @@ function drawAxis() {
     drawText(
         "광축",
         1015,
-        axisY - 10,
+        axisY-10,
         13,
         "#888"
     );
+
 }
 
+
 function getLensGeometry() {
-    const x = objectXPos;
-    const h = parseFloat(deviceSize.value);
-    const th = parseFloat(lensThickness.value);
+
+    const x =
+        objectXPos;
+
+    const h =
+        parseFloat(
+            deviceSize.value
+        );
+
+    const th =
+        parseFloat(
+            lensThickness.value
+        );
 
     const R =
         (
@@ -375,92 +594,107 @@ function getLensGeometry() {
         th,
         R
     };
+
 }
+
 
 function drawConvexLens() {
+
     const g =
         getLensGeometry();
 
     ctx.beginPath();
 
     ctx.moveTo(
-        g.x - g.th/2,
-        axisY - g.h/2
+        g.x-g.th/2,
+        axisY-g.h/2
     );
 
     ctx.quadraticCurveTo(
-        g.x + g.th/2,
+        g.x+g.th/2,
         axisY,
-        g.x - g.th/2,
-        axisY + g.h/2
+        g.x-g.th/2,
+        axisY+g.h/2
     );
 
     ctx.quadraticCurveTo(
-        g.x - g.th*1.5,
+        g.x-g.th*1.5,
         axisY,
-        g.x - g.th/2,
-        axisY - g.h/2
+        g.x-g.th/2,
+        axisY-g.h/2
     );
 
     ctx.fillStyle =
-        "rgba(100, 200, 255, 0.35)";
+        "rgba(100,200,255,0.35)";
 
     ctx.fill();
 
     ctx.strokeStyle = "#0288d1";
     ctx.lineWidth = 3;
+
     ctx.stroke();
+
 }
+
 
 function drawConcaveLens() {
+
     const g =
         getLensGeometry();
 
     ctx.beginPath();
 
     ctx.moveTo(
-        g.x - g.th*1.2,
-        axisY - g.h/2
+        g.x-g.th*1.2,
+        axisY-g.h/2
     );
 
     ctx.lineTo(
-        g.x + g.th*0.3,
-        axisY - g.h/2
+        g.x+g.th*0.3,
+        axisY-g.h/2
     );
 
     ctx.quadraticCurveTo(
-        g.x - g.th*0.5,
+        g.x-g.th*0.5,
         axisY,
-        g.x + g.th*0.3,
-        axisY + g.h/2
+        g.x+g.th*0.3,
+        axisY+g.h/2
     );
 
     ctx.lineTo(
-        g.x - g.th*1.2,
-        axisY + g.h/2
+        g.x-g.th*1.2,
+        axisY+g.h/2
     );
 
     ctx.quadraticCurveTo(
-        g.x - g.th*0.5,
+        g.x-g.th*0.5,
         axisY,
-        g.x - g.th*1.2,
-        axisY - g.h/2
+        g.x-g.th*1.2,
+        axisY-g.h/2
     );
 
     ctx.fillStyle =
-        "rgba(100, 200, 255, 0.35)";
+        "rgba(100,200,255,0.35)";
 
     ctx.fill();
 
     ctx.strokeStyle = "#0288d1";
     ctx.lineWidth = 3;
+
     ctx.stroke();
+
 }
 
+
 function drawPlaneMirror() {
-    const x = objectXPos;
+
+    const x =
+        objectXPos;
+
     const h =
-        parseFloat(deviceSize.value);
+        parseFloat(
+            deviceSize.value
+        );
 
     drawLine(
         {
@@ -480,6 +714,7 @@ function drawPlaneMirror() {
         y<axisY+h/2;
         y+=15
     ) {
+
         drawLine(
             {
                 x:x,
@@ -492,18 +727,29 @@ function drawPlaneMirror() {
             "#78909c",
             2
         );
+
     }
+
 }
+
 
 function getConcaveMirrorSpecs() {
-    const x = objectXPos;
+
+    const x =
+        objectXPos;
+
     const h =
-        parseFloat(deviceSize.value);
+        parseFloat(
+            deviceSize.value
+        );
 
     const R =
-        parseFloat(radius.value);
+        parseFloat(
+            radius.value
+        );
 
-    const cx = x - R;
+    const cx =
+        x-R;
 
     const sinVal =
         Math.min(
@@ -515,24 +761,41 @@ function getConcaveMirrorSpecs() {
         Math.asin(sinVal);
 
     return {
+
         cx,
         cy:axisY,
         R,
-        startAngle:-halfAngle,
-        endAngle:halfAngle,
+
+        startAngle:
+            -halfAngle,
+
+        endAngle:
+            halfAngle,
+
         surfaceX:x
+
     };
+
 }
+
 
 function getConvexMirrorSpecs() {
-    const x = objectXPos;
+
+    const x =
+        objectXPos;
+
     const h =
-        parseFloat(deviceSize.value);
+        parseFloat(
+            deviceSize.value
+        );
 
     const R =
-        parseFloat(radius.value);
+        parseFloat(
+            radius.value
+        );
 
-    const cx = x + R;
+    const cx =
+        x+R;
 
     const sinVal =
         Math.min(
@@ -544,16 +807,26 @@ function getConvexMirrorSpecs() {
         Math.asin(sinVal);
 
     return {
+
         cx,
         cy:axisY,
         R,
-        startAngle:Math.PI-halfAngle,
-        endAngle:Math.PI+halfAngle,
+
+        startAngle:
+            Math.PI-halfAngle,
+
+        endAngle:
+            Math.PI+halfAngle,
+
         surfaceX:x
+
     };
+
 }
 
+
 function drawConcaveMirror() {
+
     const specs =
         getConcaveMirrorSpecs();
 
@@ -569,10 +842,14 @@ function drawConcaveMirror() {
 
     ctx.strokeStyle = "#37474f";
     ctx.lineWidth = 5;
+
     ctx.stroke();
+
 }
 
+
 function drawConvexMirror() {
+
     const specs =
         getConvexMirrorSpecs();
 
@@ -588,18 +865,27 @@ function drawConvexMirror() {
 
     ctx.strokeStyle = "#37474f";
     ctx.lineWidth = 5;
+
     ctx.stroke();
+
 }
 
+
 function drawPrism() {
-    const x = objectXPos;
+
+    const x =
+        objectXPos;
 
     const A =
-        parseFloat(prismAngle.value) *
+        parseFloat(
+            prismAngle.value
+        ) *
         Math.PI/180;
 
     const base =
-        parseFloat(deviceSize.value);
+        parseFloat(
+            deviceSize.value
+        );
 
     const height =
         base /
@@ -627,14 +913,17 @@ function drawPrism() {
     ctx.closePath();
 
     ctx.fillStyle =
-        "rgba(100, 200, 255, 0.3)";
+        "rgba(100,200,255,0.3)";
 
     ctx.fill();
 
     ctx.strokeStyle = "#0288d1";
     ctx.lineWidth = 4;
+
     ctx.stroke();
+
 }
+
 
 function getSegmentIntersection(
     p,
@@ -642,6 +931,7 @@ function getSegmentIntersection(
     a,
     b
 ) {
+
     const v =
         sub(b,a);
 
@@ -674,24 +964,33 @@ function getSegmentIntersection(
         s>=0 &&
         s<=1
     ) {
+
         return {
+
             t,
             s,
-            point:add(
-                p,
-                mul(d,t)
-            )
+
+            point:
+                add(
+                    p,
+                    mul(d,t)
+                )
+
         };
+
     }
 
     return null;
+
 }
+
 
 function rayCircleIntersectionStrict(
     p,
     d,
     specs
 ) {
+
     const L =
         sub(
             p,
@@ -738,7 +1037,10 @@ function rayCircleIntersectionStrict(
         (a,b)=>a-b
     );
 
-    for(let t of ts) {
+    for(
+        let t of ts
+    ) {
+
         const hit =
             add(
                 p,
@@ -769,31 +1071,43 @@ function rayCircleIntersectionStrict(
             ea += Math.PI*2;
 
         if(sa>ea) {
+
             if(
                 ang>=sa ||
                 ang<=ea
             ) {
+
                 return {
                     t,
                     point:hit
                 };
+
             }
+
         }
+
         else {
+
             if(
                 ang>=sa &&
                 ang<=ea
             ) {
+
                 return {
                     t,
                     point:hit
                 };
+
             }
+
         }
+
     }
 
     return null;
+
 }
+
 
 function rayLensSurfaceIntersection(
     p,
@@ -803,6 +1117,7 @@ function rayLensSurfaceIntersection(
     R,
     hLimit
 ) {
+
     const L =
         sub(
             p,
@@ -849,7 +1164,10 @@ function rayLensSurfaceIntersection(
         (a,b)=>a-b
     );
 
-    for(let t of ts) {
+    for(
+        let t of ts
+    ) {
+
         const hit =
             add(
                 p,
@@ -861,20 +1179,25 @@ function rayLensSurfaceIntersection(
                 hit.y-axisY
             )<=hLimit
         ) {
+
             return {
                 t,
                 point:hit
             };
+
         }
+
     }
 
     return null;
+
 }
 
 
 /* =========================================================
    광선 추적
    ========================================================= */
+
 function traceRays() {
 
     const type =
@@ -884,23 +1207,29 @@ function traceRays() {
         objectXPos;
 
     /*
-     * 레이저의 실제 발사점
-     * 점선과 실제 레이저가
-     * 정확히 같은 곳에서 출발한다.
+     * 실제 레이저의 시작점
      */
     const p = {
+
         x:laser.x,
         y:laser.y
+
     };
 
     /*
-     * 레이저 손잡이의 방향과
-     * 정확히 같은 방향
+     * 레이저 한 줄기의 방향
      */
     const d =
         normalize({
-            x:Math.cos(laser.angle),
-            y:Math.sin(laser.angle)
+
+            x:Math.cos(
+                laser.angle
+            ),
+
+            y:Math.sin(
+                laser.angle
+            )
+
         });
 
     const hLimit =
@@ -908,49 +1237,12 @@ function traceRays() {
             deviceSize.value
         )/2;
 
-    if(
-        Math.abs(d.x)<1e-5
-    ) {
-
-        drawLine(
-            p,
-            add(
-                p,
-                mul(d,1000)
-            ),
-            "#e53935",
-            4
-        );
-
-        return;
-    }
-
 
     /*
      * =====================================================
-     * 점선
-     *
-     * 실제 레이저와 똑같은 발사점 p에서
-     * 똑같은 방향 d로 동시에 출발한다.
-     *
-     * 따라서 레이저가 나오는 순간부터
-     * 점선도 레이저와 함께 시작한다.
-     *
-     * 광학 기구가 없었다면 레이저가 계속 갔을
-     * 원래 직진 경로를 나타낸다.
+     * 볼록렌즈
      * =====================================================
      */
-    drawLine(
-        p,
-        add(
-            p,
-            mul(d,1000)
-        ),
-        "#ff9800",
-        2,
-        true
-    );
-
 
     if(
         type==="convexLens"
@@ -1007,58 +1299,61 @@ function traceRays() {
                 );
 
             const focus = {
+
                 x:
                     g.x+
                     focusDistance,
 
                 y:
                     axisY
+
             };
 
 
             /*
-             * 실제 레이저:
-             *
-             * 발사점
-             *   ↓
-             * 렌즈 앞면
-             *   ↓
-             * 렌즈 뒷면
-             *   ↓
-             * 하나의 초점
+             * 실제 레이저
              */
-            ctx.beginPath();
-
-            ctx.setLineDash([]);
-
-            ctx.moveTo(
-                p.x,
-                p.y
+            drawLine(
+                p,
+                hitIn,
+                "#e53935",
+                4
             );
 
-            ctx.lineTo(
-                hitIn.x,
-                hitIn.y
+            drawLine(
+                hitIn,
+                hitOut,
+                "#e53935",
+                4
             );
 
-            ctx.lineTo(
-                hitOut.x,
-                hitOut.y
+            drawLine(
+                hitOut,
+                focus,
+                "#e53935",
+                4
             );
 
-            ctx.lineTo(
-                focus.x,
-                focus.y
+
+            /*
+             * 원래 직진 경로 점선
+             *
+             * 레이저와 같은 발사점에서
+             * 같은 방향으로 출발한다.
+             */
+            drawLine(
+                p,
+                add(
+                    p,
+                    mul(d,1000)
+                ),
+                "#ff9800",
+                2,
+                true
             );
-
-            ctx.strokeStyle =
-                "#e53935";
-
-            ctx.lineWidth = 4;
-
-            ctx.stroke();
 
             return;
+
         }
 
         drawLine(
@@ -1070,8 +1365,17 @@ function traceRays() {
             "#e53935",
             4
         );
+
+        return;
+
     }
 
+
+    /*
+     * =====================================================
+     * 오목렌즈
+     * =====================================================
+     */
 
     else if(
         type==="concaveLens"
@@ -1110,6 +1414,7 @@ function traceRays() {
                 hLimit
             );
 
+
         if(
             hitInRes &&
             hitOutRes
@@ -1122,13 +1427,23 @@ function traceRays() {
                 hitOutRes.point;
 
 
+            /*
+             * 실제 레이저
+             *
+             * 레이저 발사점
+             *      ↓
+             *   렌즈 앞면
+             *      ↓
+             *   렌즈 뒷면
+             *      ↓
+             *    발산
+             */
             drawLine(
                 p,
                 hitIn,
                 "#e53935",
                 4
             );
-
 
             drawLine(
                 hitIn,
@@ -1138,6 +1453,29 @@ function traceRays() {
             );
 
 
+            /*
+             * =================================================
+             * 수정된 부분
+             *
+             * 오목렌즈에서도 점선이 레이저와 정확히
+             * 같은 발사점 p에서 시작한다.
+             *
+             * 렌즈에 들어가기 전까지는
+             * 실제 레이저와 완전히 같은 원래 직진 경로이다.
+             * =================================================
+             */
+            drawLine(
+                p,
+                hitIn,
+                "#ff9800",
+                2,
+                true
+            );
+
+
+            /*
+             * 오목렌즈를 통과한 뒤의 실제 발산광선
+             */
             const virtualFocusDistance =
                 Math.max(
                     55,
@@ -1145,12 +1483,14 @@ function traceRays() {
                 );
 
             const virtualFocus = {
+
                 x:
                     g.x -
                     virtualFocusDistance,
 
                 y:
                     axisY
+
             };
 
 
@@ -1178,11 +1518,9 @@ function traceRays() {
 
 
             /*
-             * 오목렌즈의 가상 초점으로
-             * 이어지는 점선.
-             *
-             * 이것은 위의 전체 직진 점선과
-             * 별개의 점선으로 표시한다.
+             * 렌즈를 통과한 뒤
+             * 뒤쪽으로 연장했을 때 만나는
+             * 가상 초점까지의 점선
              */
             drawLine(
                 virtualFocus,
@@ -1193,8 +1531,15 @@ function traceRays() {
             );
 
             return;
+
         }
 
+
+        /*
+         * 렌즈에 닿지 않는 경우에도
+         * 레이저와 점선이 같은 시작점에서
+         * 함께 직진한다.
+         */
         drawLine(
             p,
             add(
@@ -1204,8 +1549,28 @@ function traceRays() {
             "#e53935",
             4
         );
+
+        drawLine(
+            p,
+            add(
+                p,
+                mul(d,1000)
+            ),
+            "#ff9800",
+            2,
+            true
+        );
+
+        return;
+
     }
 
+
+    /*
+     * =====================================================
+     * 평면거울
+     * =====================================================
+     */
 
     else if(
         type==="planeMirror"
@@ -1234,6 +1599,17 @@ function traceRays() {
                 4
             );
 
+            drawLine(
+                p,
+                add(
+                    p,
+                    mul(d,1000)
+                ),
+                "#ff9800",
+                2,
+                true
+            );
+
             const n = {
                 x:-1,
                 y:0
@@ -1243,6 +1619,7 @@ function traceRays() {
                 dot(d,n);
 
             const outDir = {
+
                 x:
                     d.x -
                     2*dotND*n.x,
@@ -1250,6 +1627,7 @@ function traceRays() {
                 y:
                     d.y -
                     2*dotND*n.y
+
             };
 
             drawLine(
@@ -1263,6 +1641,7 @@ function traceRays() {
             );
 
             return;
+
         }
 
         drawLine(
@@ -1274,8 +1653,28 @@ function traceRays() {
             "#e53935",
             4
         );
+
+        drawLine(
+            p,
+            add(
+                p,
+                mul(d,1000)
+            ),
+            "#ff9800",
+            2,
+            true
+        );
+
+        return;
+
     }
 
+
+    /*
+     * =====================================================
+     * 오목거울
+     * =====================================================
+     */
 
     else if(
         type==="concaveMirror"
@@ -1305,6 +1704,17 @@ function traceRays() {
                 4
             );
 
+            drawLine(
+                p,
+                add(
+                    p,
+                    mul(d,1000)
+                ),
+                "#ff9800",
+                2,
+                true
+            );
+
             const normal =
                 normalize(
                     sub(
@@ -1320,6 +1730,7 @@ function traceRays() {
                 dot(d,normal);
 
             const outDir = {
+
                 x:
                     d.x -
                     2*dotND*normal.x,
@@ -1327,6 +1738,7 @@ function traceRays() {
                 y:
                     d.y -
                     2*dotND*normal.y
+
             };
 
             drawLine(
@@ -1340,6 +1752,7 @@ function traceRays() {
             );
 
             return;
+
         }
 
         drawLine(
@@ -1351,8 +1764,28 @@ function traceRays() {
             "#e53935",
             4
         );
+
+        drawLine(
+            p,
+            add(
+                p,
+                mul(d,1000)
+            ),
+            "#ff9800",
+            2,
+            true
+        );
+
+        return;
+
     }
 
+
+    /*
+     * =====================================================
+     * 볼록거울
+     * =====================================================
+     */
 
     else if(
         type==="convexMirror"
@@ -1382,6 +1815,17 @@ function traceRays() {
                 4
             );
 
+            drawLine(
+                p,
+                add(
+                    p,
+                    mul(d,1000)
+                ),
+                "#ff9800",
+                2,
+                true
+            );
+
             const normal =
                 normalize(
                     sub(
@@ -1397,6 +1841,7 @@ function traceRays() {
                 dot(d,normal);
 
             const outDir = {
+
                 x:
                     d.x -
                     2*dotND*normal.x,
@@ -1404,6 +1849,7 @@ function traceRays() {
                 y:
                     d.y -
                     2*dotND*normal.y
+
             };
 
             drawLine(
@@ -1417,6 +1863,7 @@ function traceRays() {
             );
 
             return;
+
         }
 
         drawLine(
@@ -1428,8 +1875,28 @@ function traceRays() {
             "#e53935",
             4
         );
+
+        drawLine(
+            p,
+            add(
+                p,
+                mul(d,1000)
+            ),
+            "#ff9800",
+            2,
+            true
+        );
+
+        return;
+
     }
 
+
+    /*
+     * =====================================================
+     * 프리즘
+     * =====================================================
+     */
 
     else if(
         type==="prism"
@@ -1453,39 +1920,49 @@ function traceRays() {
             );
 
         const Vbl = {
+
             x:
                 ox-base/2,
 
             y:
                 axisY+height/2
+
         };
 
         const Vtop = {
+
             x:ox,
             y:axisY-height/2
+
         };
 
         const Vbr = {
+
             x:
                 ox+base/2,
 
             y:
                 axisY+height/2
+
         };
 
         const edges = [
+
             {
                 a:Vbl,
                 b:Vtop
             },
+
             {
                 a:Vtop,
                 b:Vbr
             },
+
             {
                 a:Vbl,
                 b:Vbr
             }
+
         ];
 
         let firstHit = null;
@@ -1512,8 +1989,11 @@ function traceRays() {
 
                     firstHit = inter;
                     matchedEdge = edge;
+
                 }
+
             }
+
         }
 
         if(
@@ -1526,6 +2006,17 @@ function traceRays() {
                 firstHit.point,
                 "#e53935",
                 4
+            );
+
+            drawLine(
+                p,
+                add(
+                    p,
+                    mul(d,1000)
+                ),
+                "#ff9800",
+                2,
+                true
             );
 
             const vFace1 =
@@ -1545,9 +2036,12 @@ function traceRays() {
             ) {
 
                 normal1 = {
+
                     x:-normal1.x,
                     y:-normal1.y
+
                 };
+
             }
 
             const ref1 =
@@ -1590,8 +2084,11 @@ function traceRays() {
 
                         secondHit = inter2;
                         secondFace = edge;
+
                     }
+
                 }
+
             }
 
             if(
@@ -1623,9 +2120,12 @@ function traceRays() {
                 ) {
 
                     normal2 = {
+
                         x:-normal2.x,
                         y:-normal2.y
+
                     };
+
                 }
 
                 const ref2 =
@@ -1650,7 +2150,9 @@ function traceRays() {
                 );
 
                 return;
+
             }
+
         }
 
         drawLine(
@@ -1662,8 +2164,22 @@ function traceRays() {
             "#e53935",
             4
         );
+
+        drawLine(
+            p,
+            add(
+                p,
+                mul(d,1000)
+            ),
+            "#ff9800",
+            2,
+            true
+        );
+
     }
+
 }
+
 
 function updateVisibility() {
 
@@ -1691,7 +2207,9 @@ function updateVisibility() {
         type==="prism"
         ? "grid"
         : "none";
+
 }
+
 
 function render() {
 
@@ -1737,13 +2255,18 @@ function render() {
     )
         drawPrism();
 
+
     /*
-     * 레이저를 그린 뒤 광선을 그린다.
-     * 광선의 시작점은 레이저의 실제 발사점 p이다.
+     * 레이저 본체
      */
     drawLaserAndHandle();
 
+
+    /*
+     * 광선
+     */
     traceRays();
+
 }
 
 
@@ -1765,7 +2288,9 @@ canvas.addEventListener(
         ) {
 
             draggingLaserHandle = true;
+
             return;
+
         }
 
         const hLimit =
@@ -1781,10 +2306,14 @@ canvas.addEventListener(
         ) {
 
             draggingDevice = true;
+
             return;
+
         }
+
     }
 );
+
 
 window.addEventListener(
     "mousemove",
@@ -1810,6 +2339,7 @@ window.addEventListener(
                 );
 
             render();
+
         }
 
         else if(
@@ -1826,9 +2356,12 @@ window.addEventListener(
                 );
 
             render();
+
         }
+
     }
 );
+
 
 window.addEventListener(
     "mouseup",
@@ -1836,8 +2369,10 @@ window.addEventListener(
 
         draggingLaserHandle = false;
         draggingDevice = false;
+
     }
 );
+
 
 objectType.addEventListener(
     "change",
@@ -1845,8 +2380,10 @@ objectType.addEventListener(
 
         updateVisibility();
         render();
+
     }
 );
+
 
 deviceSize.addEventListener(
     "input",
@@ -1858,8 +2395,10 @@ deviceSize.addEventListener(
             deviceSize.value;
 
         render();
+
     }
 );
+
 
 lensThickness.addEventListener(
     "input",
@@ -1871,8 +2410,10 @@ lensThickness.addEventListener(
             lensThickness.value;
 
         render();
+
     }
 );
+
 
 radius.addEventListener(
     "input",
@@ -1884,8 +2425,10 @@ radius.addEventListener(
             radius.value;
 
         render();
+
     }
 );
+
 
 prismAngle.addEventListener(
     "input",
@@ -1897,8 +2440,10 @@ prismAngle.addEventListener(
             prismAngle.value+"°";
 
         render();
+
     }
 );
+
 
 updateVisibility();
 render();
