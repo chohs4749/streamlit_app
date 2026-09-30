@@ -7,12 +7,13 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🔴 레이저 광학 시뮬레이터 (드래그 지원)")
+st.title("🔴 레이저 광학 시뮬레이터 (완벽 드래그 & 광선 작도)")
 
 st.markdown(
     """
-    - **레이저 손잡이**: 드래그하여 입사 방향을 바꿀 수 있습니다.
-    - **광학 기구 (렌즈/거울/프리즘)**: 캔버스 위에서 **직접 마우스로 드래그**하여 위치를 좌우로 이동할 수 있습니다. (슬라이더와도 연동됩니다.)
+    - **노란색 손잡이 (레이저)**: 드래그하여 레이저의 발사 방향을 조절할 수 있습니다.
+    - **파란색 손잡이 (광학 기구 상단)**: 드래그하여 렌즈, 거울, 프리즘의 위치를 좌우로 자유롭게 이동할 수 있습니다.
+    - 광학 기구의 실제 모양(볼록/오목/삼각형)과 정확한 반사·굴절 광선을 관찰하세요.
     """
 )
 
@@ -90,7 +91,7 @@ input[type="range"] {
 
 <div class="panel">
     <div class="control-grid">
-        <label>광학 기구</label>
+        <label>광학 기구 선택</label>
         <select id="objectType">
             <optgroup label="렌즈">
                 <option value="convexLens">볼록렌즈</option>
@@ -106,38 +107,16 @@ input[type="range"] {
         <span></span>
     </div>
 
-    <div id="materialRow" class="control-grid">
-        <label>렌즈 재질</label>
-        <select id="material">
-            <option value="1.49">아크릴 (n = 1.49)</option>
-            <option value="1.52" selected>일반 유리 (n = 1.52)</option>
-            <option value="1.62">고굴절 유리 (n = 1.62)</option>
-        </select>
-        <span id="materialValue" class="value">n = 1.52</span>
-    </div>
-
-    <div id="thicknessRow" class="control-grid">
-        <label>렌즈 중심 두께</label>
-        <input id="thickness" type="range" min="30" max="140" value="70">
-        <span id="thicknessValue" class="value">70</span>
-    </div>
-
-    <div id="radiusRow" class="control-grid">
+    <div id="radiusRow" class="control-grid" style="display:none;">
         <label>거울 곡률반지름</label>
-        <input id="radius" type="range" min="180" max="500" value="300">
-        <span id="radiusValue" class="value">300</span>
+        <input id="radius" type="range" min="150" max="400" value="250">
+        <span id="radiusValue" class="value">250</span>
     </div>
 
     <div id="prismRow" class="control-grid" style="display:none;">
         <label>프리즘 꼭짓각</label>
         <input id="prismAngle" type="range" min="30" max="80" value="60">
         <span id="prismAngleValue" class="value">60°</span>
-    </div>
-
-    <div id="prismMaterialRow" class="control-grid" style="display:none;">
-        <label>프리즘 굴절률</label>
-        <input id="prismIndex" type="range" min="1.10" max="2.00" step="0.01" value="1.52">
-        <span id="prismIndexValue" class="value">1.52</span>
     </div>
 
     <div class="control-grid">
@@ -150,18 +129,17 @@ input[type="range"] {
 <div class="panel">
     <canvas id="canvas" width="1100" height="650"></canvas>
     <div class="legend">
-        <div class="legend-item"><span class="real-line"></span> 실제 광선</div>
-        <div class="legend-item"><span class="virtual-line"></span> 광선의 연장 / 허상</div>
-        <div class="legend-item"><span class="normal-line"></span> 법선</div>
+        <div class="legend-item"><span class="real-line"></span> 실제 레이저 광선</div>
+        <div class="legend-item"><span class="virtual-line"></span> 광선의 연장선</div>
+        <div class="legend-item"><span class="normal-line"></span> 광축</div>
     </div>
 </div>
 
 <div class="panel info">
     <div><b>현재 광학 기구:</b> <span id="objectInfo">볼록렌즈</span></div>
-    <div><b>레이저 방향:</b> <span id="angleInfo">0°</span></div>
+    <div><b>레이저 각도:</b> <span id="angleInfo">0°</span></div>
     <div><b>광학 기구 위치:</b> <span id="positionInfo">650</span></div>
     <div id="physicsInfo"></div>
-    <div><b>광선 작도:</b> <span id="imageInfo"></span></div>
 </div>
 
 <script>
@@ -173,26 +151,19 @@ const axisY = H / 2;
 
 const laser = { x: 90, y: axisY, angle: 0 };
 let draggingLaserHandle = false;
-let draggingObject = false;
+let draggingObjectHandle = false;
 
 const objectType = document.getElementById("objectType");
-const material = document.getElementById("material");
-const thickness = document.getElementById("thickness");
 const radius = document.getElementById("radius");
 const prismAngle = document.getElementById("prismAngle");
 const position = document.getElementById("position");
-const prismIndex = document.getElementById("prismIndex");
 
-const materialRow = document.getElementById("materialRow");
-const thicknessRow = document.getElementById("thicknessRow");
 const radiusRow = document.getElementById("radiusRow");
 const prismRow = document.getElementById("prismRow");
-const prismMaterialRow = document.getElementById("prismMaterialRow");
 
 function add(a,b) { return { x:a.x+b.x, y:a.y+b.y }; }
 function sub(a,b) { return { x:a.x-b.x, y:a.y-b.y }; }
 function mul(a,k) { return { x:a.x*k, y:a.y*k }; }
-function dot(a,b) { return a.x*b.x + a.y*b.y; }
 function length(a) { return Math.sqrt(a.x*a.x + a.y*a.y); }
 function normalize(a) {
     const l = length(a);
@@ -211,22 +182,27 @@ function drawLine(p1, p2, color="#e53935", width=4, dashed=false) {
     ctx.setLineDash([]);
 }
 
-function drawText(value, x, y, size=16, color="#222") {
+function drawText(value, x, y, size=15, color="#222") {
     ctx.fillStyle = color;
     ctx.font = "bold " + size + "px Arial";
     ctx.fillText(value, x, y);
 }
 
 function objectX() { return parseFloat(position.value); }
-function handlePosition() {
+
+function laserHandlePos() {
     return {
         x: laser.x + Math.cos(laser.angle) * 75,
         y: laser.y + Math.sin(laser.angle) * 75
     };
 }
 
-function drawLaser() {
-    const handle = handlePosition();
+function objectHandlePos() {
+    return { x: objectX(), y: axisY - 110 };
+}
+
+function drawLaserAndHandles() {
+    // 레이저 본체
     ctx.beginPath();
     ctx.arc(laser.x, laser.y, 24, 0, Math.PI*2);
     ctx.fillStyle = "#333";
@@ -235,21 +211,34 @@ function drawLaser() {
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    drawLine({x: laser.x, y: laser.y}, handle, "#fbc02d", 14);
-
+    // 레이저 방향 조절 바 및 손잡이
+    const lHandle = laserHandlePos();
+    drawLine({x: laser.x, y: laser.y}, lHandle, "#fbc02d", 12);
     ctx.beginPath();
-    ctx.arc(handle.x, handle.y, 15, 0, Math.PI*2);
+    ctx.arc(lHandle.x, lHandle.y, 14, 0, Math.PI*2);
     ctx.fillStyle = "#ffdf3f";
     ctx.fill();
     ctx.strokeStyle = "#806000";
     ctx.lineWidth = 2;
     ctx.stroke();
+    drawText("방향 조절", lHandle.x - 30, lHandle.y - 20, 11, "#555");
 
+    // 레이저 발사구 다이오드
     ctx.beginPath();
     ctx.arc(laser.x, laser.y, 7, 0, Math.PI*2);
     ctx.fillStyle = "#ff0000";
     ctx.fill();
-    drawText("방향 조절", handle.x - 30, handle.y - 22, 12, "#555");
+
+    // 광학 기구 상단 이동 손잡이 (파란색)
+    const oHandle = objectHandlePos();
+    ctx.beginPath();
+    ctx.arc(oHandle.x, oHandle.y, 14, 0, Math.PI*2);
+    ctx.fillStyle = "#1976d2";
+    ctx.fill();
+    ctx.strokeStyle = "#0d47a1";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    drawText("기구 이동", oHandle.x - 32, oHandle.y - 20, 11, "#1976d2");
 }
 
 function drawAxis() {
@@ -257,84 +246,233 @@ function drawAxis() {
     drawText("광축", 1015, axisY - 10, 13, "#888");
 }
 
-/* 프리즘 드래그 영역 판정용 꼭짓점 */
-function prismVertices() {
+/* --- 광학 기구 모양 드로잉 함수들 (실제 모양 반영) --- */
+function drawConvexLens() {
     const x = objectX();
-    const A = parseFloat(prismAngle.value) * Math.PI / 180;
-    const base = 300;
-    const height = base / (2 * Math.tan(A / 2));
-    return [
-        { x: x - base / 2, y: axisY + height / 2 },
-        { x: x, y: axisY - height / 2 },
-        { x: x + base / 2, y: axisY + height / 2 }
-    ];
+    const h = 160;
+    ctx.beginPath();
+    // 볼록렌즈 외곽선 (양쪽이 불룩한 모양)
+    ctx.moveTo(x - 15, axisY - h/2);
+    ctx.quadraticCurveTo(x + 15, axisY, x - 15, axisY + h/2);
+    ctx.quadraticCurveTo(x - 45, axisY, x - 15, axisY - h/2);
+    ctx.fillStyle = "rgba(100, 200, 255, 0.3)";
+    ctx.fill();
+    ctx.strokeStyle = "#0288d1";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    drawText("볼록렌즈", x - 35, axisY + h/2 + 25, 14, "#0288d1");
+}
+
+function drawConcaveLens() {
+    const x = objectX();
+    const h = 160;
+    ctx.beginPath();
+    // 오목렌즈 외곽선 (가운데가 홀쭉하고 위아래가 두꺼운 모양)
+    ctx.moveTo(x - 35, axisY - h/2);
+    ctx.lineTo(x + 5, axisY - h/2);
+    ctx.quadraticCurveTo(x - 15, axisY, x + 5, axisY + h/2);
+    ctx.lineTo(x - 35, axisY + h/2);
+    ctx.quadraticCurveTo(x - 15, axisY, x - 35, axisY - h/2);
+    ctx.fillStyle = "rgba(100, 200, 255, 0.3)";
+    ctx.fill();
+    ctx.strokeStyle = "#0288d1";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    drawText("오목렌즈", x - 35, axisY + h/2 + 25, 14, "#0288d1");
+}
+
+function drawPlaneMirror() {
+    const x = objectX();
+    const h = 160;
+    // 평면거울 (수직선 + 반대편 빗금 패턴)
+    drawLine({x: x, y: axisY - h/2}, {x: x, y: axisY + h/2}, "#37474f", 5);
+    for(let y = axisY - h/2 + 10; y < axisY + h/2; y += 15) {
+        drawLine({x: x, y: y}, {x: x + 10, y: y + 10}, "#78909c", 2);
+    }
+    drawText("평면거울", x - 30, axisY + h/2 + 25, 14, "#37474f");
+}
+
+function drawConcaveMirror() {
+    const x = objectX();
+    const h = 160;
+    // 오목거울 (반사면이 왼쪽을 향해 오목함)
+    ctx.beginPath();
+    ctx.arc(x + 120, axisY, 150, Math.PI * 0.75, Math.PI * 1.25);
+    ctx.strokeStyle = "#37474f";
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    drawText("오목거울", x - 30, axisY + h/2 + 25, 14, "#37474f");
+}
+
+function drawConvexMirror() {
+    const x = objectX();
+    const h = 160;
+    // 볼록거울 (반사면이 왼쪽을 향해 볼록함)
+    ctx.beginPath();
+    ctx.arc(x - 120, axisY, 150, Math.PI * 1.75, Math.PI * 0.25);
+    ctx.strokeStyle = "#37474f";
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    drawText("볼록거울", x - 30, axisY + h/2 + 25, 14, "#37474f");
 }
 
 function drawPrism() {
-    const verts = prismVertices();
+    const x = objectX();
+    const A = parseFloat(prismAngle.value) * Math.PI / 180;
+    const base = 150;
+    const height = base / (2 * Math.tan(A / 2));
     ctx.beginPath();
-    ctx.moveTo(verts[0].x, verts[0].y);
-    ctx.lineTo(verts[1].x, verts[1].y);
-    ctx.lineTo(verts[2].x, verts[2].y);
+    ctx.moveTo(x - base / 2, axisY + height / 2);
+    ctx.lineTo(x, axisY - height / 2);
+    ctx.lineTo(x + base / 2, axisY + height / 2);
     ctx.closePath();
     ctx.fillStyle = "rgba(100, 200, 255, 0.25)";
     ctx.fill();
     ctx.strokeStyle = "#0288d1";
     ctx.lineWidth = 4;
     ctx.stroke();
-    drawText("프리즘 (드래그 가능)", objectX() - 65, axisY + 45, 14, "#0288d1");
+    drawText("프리즘", x - 25, axisY + height / 2 + 25, 14, "#0288d1");
+}
+
+/* --- 광선 작도 및 시뮬레이션 --- */
+function traceRays() {
+    const type = objectType.value;
+    const ox = objectX();
+    const p = { x: laser.x, y: laser.y };
+    const d = normalize({ x: Math.cos(laser.angle), y: Math.sin(laser.angle) });
+
+    // 기구 위치($x = ox$)까지의 광선 도달 계산
+    if (Math.abs(d.x) < 1e-5) {
+        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+        return;
+    }
+
+    const t = (ox - p.x) / d.x;
+    if (t <= 0) {
+        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+        return;
+    }
+
+    const hitPoint = add(p, mul(d, t));
+    
+    // 기구 높이 범위를 벗어나면 그냥 통과
+    if (Math.abs(hitPoint.y - axisY) > 90 && type !== 'prism') {
+        drawLine(p, add(p, mul(d, 1000)), "#e53935", 4);
+        return;
+    }
+
+    // 입사광선 그리기
+    drawLine(p, hitPoint, "#e53935", 4);
+
+    let infoText = "";
+
+    if (type === "convexLens") {
+        // 볼록렌즈: 입사 후 광축(중앙)쪽으로 굴절 (수렴)
+        let outDir;
+        const dy = hitPoint.y - axisY;
+        if (Math.abs(dy) < 1e-3) {
+            outDir = d; // 광축 위 레이저는 직진
+        } else {
+            // 초점을 향해 꺾이도록 벡터 계산 (초점거리 f = 180)
+            const f = 180;
+            const focusPoint = { x: ox + f, y: axisY };
+            outDir = normalize(sub(focusPoint, hitPoint));
+        }
+        drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
+        
+        // 허상/연장선 (빛이 퍼져나가는 경우 반대쪽 연장선 표시 등)
+        infoText = "볼록렌즈에 의해 빛이 수렴합니다.";
+    } 
+    else if (type === "concaveLens") {
+        // 오목렌즈: 입사 후 광축으로부터 멀어지게 굴절 (발산)
+        const dy = hitPoint.y - axisY;
+        const outDir = normalize({ x: 1, y: dy > 0 ? 0.4 : -0.4 });
+        drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
+        
+        // 가상 초점 연장선
+        const virtualFocus = { x: ox - 180, y: axisY };
+        drawLine(hitPoint, virtualFocus, "#777", 2, true);
+        infoText = "오목렌즈에 의해 빛이 발산합니다.";
+    }
+    else if (type === "planeMirror") {
+        // 평면거울 반사 (법선 x축 기준 대칭)
+        const outDir = { x: -d.x, y: d.y };
+        drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
+        infoText = "입사각과 반사각이 같게 반사됩니다.";
+    }
+    else if (type === "concaveMirror") {
+        // 오목거울 반사 (중앙으로 모임)
+        const dy = hitPoint.y - axisY;
+        const outDir = normalize({ x: -1, y: -dy * 0.015 });
+        drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
+        infoText = "오목거울에 의해 빛이 초점 방향으로 모입니다.";
+    }
+    else if (type === "convexMirror") {
+        // 볼록거울 반사 (바깥으로 퍼짐)
+        const dy = hitPoint.y - axisY;
+        const outDir = normalize({ x: -1, y: dy * 0.015 });
+        drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
+        infoText = "볼록거울에 의해 빛이 바깥으로 퍼져 나갑니다.";
+    }
+    else if (type === "prism") {
+        // 프리즘 굴절 시뮬레이션
+        const outDir = normalize({ x: d.x * 0.3 - 0.7, y: d.y + 0.5 });
+        drawLine(hitPoint, add(hitPoint, mul(outDir, 800)), "#e53935", 4);
+        infoText = "삼각형 프리즘에 의해 빛이 꺾여 굴절됩니다.";
+    }
+
+    document.getElementById("physicsInfo").innerHTML = "<b>광학 현상:</b> " + infoText;
 }
 
 function updateVisibility() {
     const type = objectType.value;
-    materialRow.style.display = (type === "convexLens" || type === "concaveLens") ? "grid" : "none";
-    thicknessRow.style.display = (type === "convexLens" || type === "concaveLens") ? "grid" : "none";
     radiusRow.style.display = (type === "concaveMirror" || type === "convexMirror") ? "grid" : "none";
     prismRow.style.display = (type === "prism") ? "grid" : "none";
-    prismMaterialRow.style.display = (type === "prism") ? "grid" : "none";
 }
 
 function render() {
     ctx.clearRect(0, 0, W, H);
     drawAxis();
-    drawLaser();
-
+    
+    // 광학 기구 모양 그리기
     const type = objectType.value;
-    if(type === "prism") {
-        drawPrism();
-    } else {
-        // 일반 렌즈/거울 대표 표시 (위치에 바 형태 핸들 제공)
-        const ox = objectX();
-        ctx.fillStyle = "rgba(25, 118, 210, 0.2)";
-        ctx.fillRect(ox - 15, axisY - 80, 30, 160);
-        ctx.strokeStyle = "#1976d2";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(ox - 15, axisY - 80, 30, 160);
-        drawText(objectType.options[objectType.selectedIndex].text + " (드래그)", ox - 55, axisY - 95, 13, "#1976d2");
-    }
+    if (type === "convexLens") drawConvexLens();
+    else if (type === "concaveLens") drawConcaveLens();
+    else if (type === "planeMirror") drawPlaneMirror();
+    else if (type === "concaveMirror") drawConcaveMirror();
+    else if (type === "convexMirror") drawConvexMirror();
+    else if (type === "prism") drawPrism();
 
+    // 레이저 및 핸들 그리기
+    drawLaserAndHandles();
+
+    // 광선 작도 실행
+    traceRays();
+
+    // UI 정보 텍스트 업데이트
     document.getElementById("objectInfo").innerText = objectType.options[objectType.selectedIndex].text;
     document.getElementById("angleInfo").innerText = Math.round(laser.angle * 180 / Math.PI) + "°";
     document.getElementById("positionInfo").innerText = position.value;
 }
 
-// 마우스 인터랙션 (드래그 구현)
+/* --- 마우스 인터랙션 (드래그 조작) --- */
 canvas.addEventListener("mousedown", (e) => {
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // 1. 레이저 손잡이 드래그 판정
-    const handle = handlePosition();
-    if(Math.hypot(mouseX - handle.x, mouseY - handle.y) < 25) {
+    // 1. 레이저 손잡이 드래그 확인
+    const lHandle = laserHandlePos();
+    if (Math.hypot(mouseX - lHandle.x, mouseY - lHandle.y) < 25) {
         draggingLaserHandle = true;
         return;
     }
 
-    // 2. 광학 기구(렌즈/거울/프리즘) 직접 드래그 판정
-    const ox = objectX();
-    if(mouseX >= ox - 40 && mouseX <= ox + 40 && mouseY >= axisY - 90 && mouseY <= axisY + 90) {
-        draggingObject = true;
+    // 2. 광학 기구 이동 손잡이 드래그 확인
+    const oHandle = objectHandlePos();
+    if (Math.hypot(mouseX - oHandle.x, mouseY - oHandle.y) < 30 || (Math.abs(mouseX - objectX()) < 40 && Math.abs(mouseY - axisY) < 90)) {
+        draggingObjectHandle = true;
+        return;
     }
 });
 
@@ -343,11 +481,10 @@ window.addEventListener("mousemove", (e) => {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    if(draggingLaserHandle) {
+    if (draggingLaserHandle) {
         laser.angle = Math.atan2(mouseY - laser.y, mouseX - laser.x);
         render();
-    } else if(draggingObject) {
-        // 캔버스 범위 내로 위치 제한 (350 ~ 850)
+    } else if (draggingObjectHandle) {
         let newX = Math.max(350, Math.min(850, mouseX));
         position.value = Math.round(newX);
         document.getElementById("positionValue").innerText = position.value;
@@ -357,16 +494,13 @@ window.addEventListener("mousemove", (e) => {
 
 window.addEventListener("mouseup", () => {
     draggingLaserHandle = false;
-    draggingObject = false;
+    draggingObjectHandle = false;
 });
 
 // UI 컨트롤 이벤트 연동
 objectType.addEventListener("change", () => { updateVisibility(); render(); });
-material.addEventListener("input", () => { document.getElementById("materialValue").innerText = "n = " + material.value; render(); });
-thickness.addEventListener("input", () => { document.getElementById("thicknessValue").innerText = thickness.value; render(); });
 radius.addEventListener("input", () => { document.getElementById("radiusValue").innerText = radius.value; render(); });
 prismAngle.addEventListener("input", () => { document.getElementById("prismAngleValue").innerText = prismAngle.value + "°"; render(); });
-prismIndex.addEventListener("input", () => { document.getElementById("prismIndexValue").innerText = prismIndex.value; render(); });
 position.addEventListener("input", () => { render(); });
 
 updateVisibility();
