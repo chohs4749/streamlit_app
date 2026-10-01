@@ -2,11 +2,11 @@ import streamlit as str_module
 import streamlit.components.v1 as components
 
 str_module.set_page_config(
-    page_title="렌즈,거울,프리즘 실험해보기"
+    page_title="렌즈,거울,프리즘 실험해보기",
     layout="wide"
 )
 
-str_module.title("🔬 렌즈,거울,프리즘 실험해보기 (물리 광선 정밀 연동)")
+str_module.title(" 렌즈,거울,프리즘 실험해보기 ")
 
 str_module.markdown(
     """
